@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>โปรแกรมแปลงสกุลเงิน</title>
+</head>
+<body>
+
+    <h1>โปรแกรมแปลงสกุลเงิน</h1>
+
+    <!-- โจทย์ 4: แสดงเวลาที่อัปเดตล่าสุด -->
+    <p id="last-update">กำลังโหลดข้อมูลอัตราแลกเปลี่ยน...</p>
+
+    <!-- โจทย์ 1: แปลงค่าแบบสองทิศทาง -->
+    <div>
+        <select id="currency-one" aria-label="สกุลเงินต้นทาง">
+            <option value="THB" selected>THB</option>
+            <option value="USD">USD</option>
+            <option value="EUR">EUR</option>
+            <option value="JPY">JPY</option>
+        </select>
+        <label>จำนวนเงินต้นทาง</label>
+        <input type="number" id="amount-one" value="1">
+    </div>
+
+    <div>
+        <select id="currency-two" aria-label="สกุลเงินปลายทาง">
+            <option value="THB">THB</option>
+            <option value="USD" selected>USD</option>
+            <option value="EUR">EUR</option>
+            <option value="JPY">JPY</option>
+        </select>
+        <label>จำนวนเงินปลายทาง</label>
+        <input type="number" id="amount-two">
+    </div>
+
+    <!-- โจทย์ 3: ปุ่มล้างข้อมูล -->
+    <br>
+    <button id="clear-btn">ล้างข้อมูล</button>
+
+    <hr>
+
+    <!-- โจทย์ 2: สร้างประวัติการแปลงเงิน -->
+    <h2>ประวัติการแปลงเงินล่าสุด</h2>
+    <button id="clear-history-btn">ล้างประวัติ</button>
+
+    <ul id="history-list">
+        <!-- ประวัติจะมาแสดงผลตรงนี้ -->
+    </ul>
+
+    <!-- เชื่อมต่อไฟล์ JavaScript -->
+    <script src="script.js"></script>
+</body>
+</html>
