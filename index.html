@@ -1,48 +1,74 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-    <meta charset="UTF-8">
-    <title>โปรแกรมแปลงสกุลเงิน</title>
+  <meta charset="UTF-8">
+  <title>ระบบบัญชีรายรับ-รายจ่าย</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <div class="container">
+    <h2>โปรแกรมบัญชีรายรับ-รายจ่าย</h2>
 
-    <h1>โปรแกรมแปลงสกุลเงิน</h1>
-
-    <p id="last-update">กำลังโหลดข้อมูลอัตราแลกเปลี่ยน...</p>
-
-    <div>
-        <select id="currency-one" aria-label="สกุลเงินต้นทาง">
-            <option value="THB" selected>THB</option>
-            <option value="USD">USD</option>
-            <option value="EUR">EUR</option>
-            <option value="JPY">JPY</option>
-        </select>
-        <label>จำนวนเงินต้นทาง</label>
-        <input type="number" id="amount-one" value="1">
+    <!-- โจทย์ที่ 4: สรุปรายงานการเงิน -->
+    <div class="summary-box">
+      <div class="box income">
+        <h4>รายรับรวม</h4>
+        <p id="total-inc">฿0.0</p>
+      </div>
+      <div class="box expense">
+        <h4>รายจ่ายรวม</h4>
+        <p id="total-exp">฿0.0</p>
+      </div>
+      <div class="box balance">
+        <h4>ยอดเงินคงเหลือสุทธิ</h4>
+        <p id="net-balance">฿0.0</p>
+      </div>
     </div>
 
-    <div>
-        <select id="currency-two" aria-label="สกุลเงินปลายทาง">
-            <option value="THB">THB</option>
-            <option value="USD" selected>USD</option>
-            <option value="EUR">EUR</option>
-            <option value="JPY">JPY</option>
-        </select>
-        <label>จำนวนเงินปลายทาง</label>
-        <input type="number" id="amount-two">
-    </div>
+    <!-- ฟอร์มเพิ่มข้อมูล -->
+    <form id="transaction-form">
+      <select id="type" required>
+        <option value="" disabled selected>เลือกประเภท</option>
+        <option value="รายรับ">รายรับ</option>
+        <option value="รายจ่าย">รายจ่าย</option>
+      </select>
+      <input type="text" id="title" placeholder="ชื่อรายการ" required>
+      <input type="number" id="amount" placeholder="จำนวนเงิน" min="1" required>
+      <select id="category" required>
+        <option value="" disabled selected>เลือกหมวดหมู่</option>
+        <option value="🍔 อาหาร">อาหาร</option>
+        <option value="🚗 เดินทาง">เดินทาง</option>
+        <option value="🛍️ ช้อปปิ้ง">ช้อปปิ้ง</option>
+        <option value="💰 เงินเดือน">เงินเดือน</option>
+        <option value="📌 อื่นๆ">อื่นๆ</option>
+      </select>
+      <button type="submit">บันทึกรายการ</button>
+    </form>
 
-    <br>
-    <button id="clear-btn">ล้างข้อมูล</button>
+    <!-- โจทย์ที่ 2: ค้นหารายการ -->
+    <input type="text" id="search" placeholder="🔍 ค้นหาชื่อรายการ... (Real-time)">
 
-    <hr>
+    <!-- โจทย์ที่ 3: แสดงประวัติรายการทั้งหมด -->
+    <h3>ประวัติการทำธุรกรรม</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>ประเภท</th>
+          <th>ชื่อรายการ</th>
+          <th>หมวดหมู่</th>
+          <th>จำนวนเงิน</th>
+        </tr>
+      </thead>
+      <tbody id="transaction-list">
+        <!-- ข้อมูลจะถูกเพิ่มที่นี่ผ่าน JavaScript -->
+      </tbody>
+    </table>
 
-    <h2>ประวัติการแปลงเงินล่าสุด</h2>
-    <button id="clear-history-btn">ล้างประวัติ</button>
+    <!-- โจทย์ที่ 5: ปุ่มล้างประวัติทั้งหมด -->
+    <button id="clear-btn" class="danger-btn">ล้างข้อมูลทั้งหมด</button>
+  </div>
 
-    <ul id="history-list">
-    </ul>
-
-    <script src="script.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>

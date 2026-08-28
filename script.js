@@ -1,102 +1,94 @@
-const amountOne = document.getElementById('amount-one');
-const amountTwo = document.getElementById('amount-two');
-const currencyOne = document.getElementById('currency-one');
-const currencyTwo = document.getElementById('currency-two');
-const lastUpdateText = document.getElementById('last-update');
+let transactions = [];
+let currentId = 1;
+
+// อ้างอิง DOM Elements
+const form = document.getElementById('transaction-form');
+const listEl = document.getElementById('transaction-list');
+const searchInput = document.getElementById('search');
 const clearBtn = document.getElementById('clear-btn');
-const historyList = document.getElementById('history-list');
-const clearHistoryBtn = document.getElementById('clear-history-btn');
+const totalIncEl = document.getElementById('total-inc');
+const totalExpEl = document.getElementById('total-exp');
+const balanceEl = document.getElementById('net-balance');
 
-let rates = {}; 
-let historyData = [];
+// เพิ่มรายการใหม่
+form.addEventListener('submit', function (e) {
+  e.preventDefault();
 
-async function fetchExchangeRates() {
-    try {
-        const res = await fetch('https://open.er-api.com/v6/latest/USD');
-        const data = await res.json();
-        rates = data.rates;
-        
-        const now = new Date();
-        lastUpdateText.innerText = `ข้อมูลอัปเดตล่าสุด: ${now.toLocaleString('th-TH')}`;
-        
-        calculate(1); 
-    } catch (error) {
-        lastUpdateText.innerText = 'ไม่สามารถดึงข้อมูลได้ โปรดตรวจสอบอินเทอร์เน็ต';
-    }
-}
+  const type = document.getElementById('type').value;
+  const title = document.getElementById('title').value;
+  const amount = parseFloat(document.getElementById('amount').value);
+  const category = document.getElementById('category').value;
 
-function calculate(source) {
-    const curr1 = currencyOne.value;
-    const curr2 = currencyTwo.value;
-    
-    if (!rates[curr1] || !rates[curr2]) return;
+  const transaction = {
+    id: currentId++,
+    type: type,
+    title: title,
+    category: category,
+    amount: amount
+  };
 
-    const rate = rates[curr2] / rates[curr1];
-
-    if (source === 1) { 
-        const val1 = parseFloat(amountOne.value);
-        if (!isNaN(val1)) {
-            amountTwo.value = (val1 * rate).toFixed(2);
-        } else {
-            amountTwo.value = '';
-        }
-    } else if (source === 2) { 
-        const val2 = parseFloat(amountTwo.value);
-        if (!isNaN(val2)) {
-            amountOne.value = (val2 / rate).toFixed(2);
-        } else {
-            amountOne.value = '';
-        }
-    }
-}
-
-
-function saveHistory() {
-    const val1 = parseFloat(amountOne.value);
-    const val2 = parseFloat(amountTwo.value);
-    if (isNaN(val1) || isNaN(val2) || val1 === 0) return;
-
-    
-    const record = `${val1.toFixed(2)} ${currencyOne.value} -> ${val2.toFixed(2)} ${currencyTwo.value}`;
-
-    historyData.unshift(record); 
-    if (historyData.length > 10) historyData.pop();
-
-    renderHistory();
-}
-
-
-function renderHistory() {
-    historyList.innerHTML = '';
-    historyData.forEach(item => {
-        const li = document.createElement('li');
-        li.innerText = item;
-        historyList.appendChild(li);
-    });
-}
-
-
-clearBtn.addEventListener('click', () => {
-    amountOne.value = '';
-    amountTwo.value = '';
+  transactions.push(transaction);
+  updateUI();
+  form.reset();
 });
 
-
-clearHistoryBtn.addEventListener('click', () => {
-    historyData = [];
-    renderHistory();
+// โจทย์ที่ 2: กรองข้อมูลแบบ Real-time
+searchInput.addEventListener('input', function() {
+  updateUI();
 });
 
+// โจทย์ที่ 5: ปุ่มล้างประวัติทั้งหมด
+clearBtn.addEventListener('click', function() {
+  if (confirm('คุณต้องการล้างข้อมูลทั้งหมดใช่หรือไม่?')) {
+    transactions = [];
+    currentId = 1;
+    updateUI();
+  }
+});
 
-amountOne.addEventListener('input', () => calculate(1));
-amountTwo.addEventListener('input', () => calculate(2));
+// อัปเดตหน้าจอ (ตารางและยอดรวม)
+function updateUI() {
+  const searchTerm = searchInput.value.toLowerCase();
+  
+  // กรองข้อมูลตามชื่อรายการ
+  const filteredTransactions = transactions.filter(t => 
+    t.title.toLowerCase().includes(searchTerm)
+  );
 
-currencyOne.addEventListener('change', () => calculate(1));
-currencyTwo.addEventListener('change', () => calculate(1));
+  renderTable(filteredTransactions);
+  updateSummary();
+}
 
+// โจทย์ที่ 3: แสดงประวัติลงในตาราง
+function renderTable(data) {
+  listEl.innerHTML = '';
 
-amountOne.addEventListener('change', saveHistory);
-amountTwo.addEventListener('change', saveHistory);
+  data.forEach(item => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${item.id}</td>
+      <td>${item.type}</td>
+      <td>${item.title}</td>
+      <td>${item.category}</td>
+      <td>฿${item.amount.toLocaleString(undefined, {minimumFractionDigits: 1})}</td>
+    `;
+    listEl.appendChild(tr);
+  });
+}
 
+// โจทย์ที่ 4: คำนวณและสรุปรายงานการเงิน
+function updateSummary() {
+  let income = 0;
+  let expense = 0;
 
-fetchExchangeRates();
+  transactions.forEach(t => {
+    if (t.type === 'รายรับ') income += t.amount;
+    else if (t.type === 'รายจ่าย') expense += t.amount;
+  });
+
+  const balance = income - expense;
+
+  totalIncEl.textContent = `฿${income.toLocaleString(undefined, {minimumFractionDigits: 1, maximumFractionDigits: 2})}`;
+  totalExpEl.textContent = `฿${expense.toLocaleString(undefined, {minimumFractionDigits: 1, maximumFractionDigits: 2})}`;
+  balanceEl.textContent = `฿${balance.toLocaleString(undefined, {minimumFractionDigits: 1, maximumFractionDigits: 2})}`;
+}
