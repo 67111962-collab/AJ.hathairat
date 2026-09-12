@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เกมจับผิดภาพ (Emoji Hunt)</title>
+    
+    <!-- นำเข้า Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'media',
+        }
+    </script>
+
+    <!-- เชื่อมต่อไฟล์ CSS ของเรา -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- เชื่อมต่อไฟล์ JavaScript ของเรา (ใช้ defer เพื่อให้โหลด HTML เสร็จก่อนรันสคริปต์) -->
+    <script src="script.js" defer></script>
+</head>
+<body class="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col items-center py-8 transition-colors duration-300 motion-reduce:transition-none">
+
+    <!-- Header & Semantic HTML -->
+    <header class="text-center mb-6 w-full px-4">
+        <h1 class="text-4xl font-bold text-indigo-700 dark:text-indigo-400 mb-2">เกมจับผิดภาพ (Emoji Hunt)</h1>
+        <p class="text-lg font-semibold" id="status-message">กด "เริ่มเกมใหม่" เพื่อค้นหาจุดต่าง!</p>
+    </header>
+
+    <main class="w-full max-w-5xl px-4 flex flex-col items-center">
+        <!-- แผงควบคุม (Controls) -->
+        <section class="w-full flex flex-col md:flex-row justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-xl shadow-md mb-8 border border-slate-200 dark:border-slate-700 gap-4">
+            <div class="flex gap-4 text-lg font-bold">
+                <div>Level: <span id="level-display" class="text-blue-600 dark:text-blue-400">1</span></div>
+                <div>หาเจอ: <span id="score-display" class="text-green-600 dark:text-green-400">0</span> / <span id="target-display">1</span></div>
+                <div>เวลา: <span id="time-display" class="text-red-600 dark:text-red-400">30</span> วิ</div>
+            </div>
+            
+            <div class="flex gap-2 flex-wrap justify-center">
+                <button onclick="startGame()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow focus:outline-none focus:ring-4 focus:ring-indigo-300 forced-colors:outline transition-transform motion-safe:active:scale-95">
+                    เริ่มเกมใหม่
+                </button>
+                <button onclick="increaseLevel()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow focus:outline-none focus:ring-4 focus:ring-emerald-300 forced-colors:outline transition-transform motion-safe:active:scale-95">
+                    เพิ่ม Level
+                </button>
+                <button onclick="document.getElementById('how-to-play').showModal()" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-lg shadow focus:outline-none focus:ring-4 focus:ring-amber-300 forced-colors:outline transition-transform motion-safe:active:scale-95">
+                    วิธีเล่น
+                </button>
+            </div>
+        </section>
+
+        <!-- พื้นที่เล่นเกม: แบ่งเป็น 2 ฝั่ง -->
+        <section class="flex flex-col md:flex-row gap-6 w-full justify-center">
+            
+            <!-- กระดานซ้าย -->
+            <div class="flex flex-col items-center w-full max-w-sm">
+                <h2 class="text-xl font-semibold mb-2">ภาพที่ 1</h2>
+                <div id="board-left" class="grid gap-2 w-full bg-slate-300 dark:bg-slate-700 p-2 rounded-xl shadow-inner">
+                    <!-- ปุ่มตารางจะถูกสร้างด้วย JS -->
+                </div>
+            </div>
+
+            <!-- กระดานขวา -->
+            <div class="flex flex-col items-center w-full max-w-sm">
+                <h2 class="text-xl font-semibold mb-2">ภาพที่ 2</h2>
+                <div id="board-right" class="grid gap-2 w-full bg-slate-300 dark:bg-slate-700 p-2 rounded-xl shadow-inner">
+                    <!-- ปุ่มตารางจะถูกสร้างด้วย JS -->
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <!-- Dialog วิธีเล่น -->
+    <dialog id="how-to-play" class="p-6 rounded-2xl shadow-2xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 max-w-md w-full backdrop:bg-black/60 border border-slate-300 dark:border-slate-600">
+        <h2 class="text-2xl font-bold mb-4 text-indigo-700 dark:text-indigo-400">วิธีเล่น</h2>
+        <ul class="list-disc pl-5 space-y-2 mb-6">
+            <li>เปรียบเทียบ "ภาพที่ 1" และ "ภาพที่ 2"</li>
+            <li>คลิกที่ Emoji <strong>จุดที่แตกต่างกัน</strong> (สามารถคลิกฝั่งใดก็ได้)</li>
+            <li>หาจุดต่างให้ครบตามจำนวนที่กำหนดก่อนเวลาหมด</li>
+            <li>สามารถใช้แป้นพิมพ์ <code>Tab</code> เพื่อเลื่อนหา และกด <code>Enter</code> เพื่อเลือกได้</li>
+            <li>เมื่อชนะ กด <strong>"เพิ่ม Level"</strong> เพื่อเล่นด่านที่ยากขึ้น</li>
+        </ul>
+        <form method="dialog" class="text-right">
+            <button type="submit" class="px-5 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-100 font-semibold rounded-lg focus:outline-none focus:ring-4 focus:ring-slate-400 forced-colors:outline">
+                เข้าใจแล้ว
+            </button>
+        </form>
+    </dialog>
+
+</body>
+</html>

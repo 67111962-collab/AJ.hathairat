@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="th" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link name="description" content="Portfolio ตัวอย่างสำหรับนักศึกษาวิศวกรรมคอมพิวเตอร์ สร้างด้วย Tailwind CSS>
+  <title>Portfolio | Passwich Suksumak ภาสวิชญ์ สุขสุเมฆ</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/tailwindcss/browser@4"></script>
+
+  <style type="text/tailwindcss">
+    @customer-variant dark (&:where(.dark));
+      @theme {
+        --color-brand-50: #ecfeff;
+        --color-brand-100: #cffafe;
+        --color-brand-400: #22d3ee;
+        --color-brand-500: #06b6d4;
+        --color-brand-600: #0891b2;
+        --color-brand-700: #0e7490;
+        --color-brand-300: #fcd34d;
+        --color-brand-400: #fbbf24;
+        --font-display:"Leelawadee UI", sans-serif;
+        --radius-card: 1.5rem;
+      }
+      @layer base {
+        html { color-scheme: light; }
+        html.dark { color-scheme: dark;
+        ::selction { background: color-mix(in oklab,) }
+        }
+     
+    }
+</head>
+<body>
+  <h1 class="text-3xl font-bold underline">
+    Hello world!
+  </h1>
+</body>
+</html>
