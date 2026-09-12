@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>ระบบบัญชีรายรับ-รายจ่าย</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h2>โปรแกรมบัญชีรายรับ-รายจ่าย</h2>
+
+    <!-- โจทย์ที่ 4: สรุปรายงานการเงิน -->
+    <div class="summary-box">
+      <div class="box income">
+        <h4>รายรับรวม</h4>
+        <p id="total-inc">฿0.0</p>
+      </div>
+      <div class="box expense">
+        <h4>รายจ่ายรวม</h4>
+        <p id="total-exp">฿0.0</p>
+      </div>
+      <div class="box balance">
+        <h4>ยอดเงินคงเหลือสุทธิ</h4>
+        <p id="net-balance">฿0.0</p>
+      </div>
+    </div>
+
+    <!-- ฟอร์มเพิ่มข้อมูล -->
+    <form id="transaction-form">
+      <select id="type" required>
+        <option value="" disabled selected>เลือกประเภท</option>
+        <option value="รายรับ">รายรับ</option>
+        <option value="รายจ่าย">รายจ่าย</option>
+      </select>
+      <input type="text" id="title" placeholder="ชื่อรายการ" required>
+      <input type="number" id="amount" placeholder="จำนวนเงิน" min="1" required>
+      <select id="category" required>
+        <option value="" disabled selected>เลือกหมวดหมู่</option>
+        <option value="🍔 อาหาร">อาหาร</option>
+        <option value="🚗 เดินทาง">เดินทาง</option>
+        <option value="🛍️ ช้อปปิ้ง">ช้อปปิ้ง</option>
+        <option value="💰 เงินเดือน">เงินเดือน</option>
+        <option value="📌 อื่นๆ">อื่นๆ</option>
+      </select>
+      <button type="submit">บันทึกรายการ</button>
+    </form>
+
+    <!-- โจทย์ที่ 2: ค้นหารายการ -->
+    <input type="text" id="search" placeholder="🔍 ค้นหาชื่อรายการ... (Real-time)">
+
+    <!-- โจทย์ที่ 3: แสดงประวัติรายการทั้งหมด -->
+    <h3>ประวัติการทำธุรกรรม</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>ประเภท</th>
+          <th>ชื่อรายการ</th>
+          <th>หมวดหมู่</th>
+          <th>จำนวนเงิน</th>
+        </tr>
+      </thead>
+      <tbody id="transaction-list">
+        <!-- ข้อมูลจะถูกเพิ่มที่นี่ผ่าน JavaScript -->
+      </tbody>
+    </table>
+
+    <!-- โจทย์ที่ 5: ปุ่มล้างประวัติทั้งหมด -->
+    <button id="clear-btn" class="danger-btn">ล้างข้อมูลทั้งหมด</button>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
