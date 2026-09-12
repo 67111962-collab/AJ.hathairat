@@ -1,0 +1,72 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Prompt:wght@300;400;700&display=swap');
+
+body {
+    background-color: #0a0a2a; /* สีพื้นหลังโทนอวกาศ/มืด */
+    color: #e0e0e0;
+    font-family: 'Prompt', sans-serif;
+    background-image: radial-gradient(circle, #2a0035 0%, #0a0a2a 100%);
+    min-height: 100vh;
+}
+
+/* ฟอนต์สไตล์ Pixel ยุคเกม 8-bit สำหรับหัวข้อ */
+h1, h2, h3, .y2k-text {
+    font-family: 'Press Start 2P', cursive;
+    color: #ff00ff; /* สีชมพู Neon */
+    text-shadow: 2px 2px 0px #00ffff; /* เงาสีฟ้า Cyan */
+    line-height: 1.5;
+}
+
+/* ปรับแต่ง Navbar ของ Bootstrap */
+.navbar-y2k {
+    background: linear-gradient(90deg, #ff00ff, #00ffff) !important;
+    border-bottom: 3px solid #fff;
+}
+.navbar-brand, .nav-link {
+    color: #000 !important;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+.nav-link:hover {
+    background-color: #000;
+    color: #00ffff !important;
+}
+
+/* ปรับแต่ง Card ของ Bootstrap */
+.card-y2k {
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 3px dashed #00ffff;
+    border-radius: 15px;
+    -webkit-backdrop-filter: blur(5px);
+    backdrop-filter: blur(5px);
+    transition: transform 0.3s;
+}
+.card-y2k:hover {
+    transform: scale(1.05);
+    border-color: #ff00ff;
+    box-shadow: 0 0 15px #ff00ff;
+}
+
+/* ปุ่มกด Y2K */
+.btn-y2k {
+    background-color: #00ffff;
+    color: #000;
+    border: 2px solid #ff00ff;
+    font-weight: bold;
+    border-radius: 20px;
+}
+.btn-y2k:hover {
+    background-color: #ff00ff;
+    color: #fff;
+    border-color: #00ffff;
+    box-shadow: 0 0 10px #00ffff;
+}
+
+/* แถบตัวอักษรวิ่งแบบเว็บยุคเก่า */
+.marquee-container {
+    background-color: #000;
+    color: #00ff00;
+    padding: 10px 0;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 0.8rem;
+    border-bottom: 2px solid #00ff00;
+}
