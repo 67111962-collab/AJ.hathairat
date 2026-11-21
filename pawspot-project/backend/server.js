@@ -34,7 +34,7 @@ app.get('/api/health', (req, res) => res.json({ ok: true }));
 app.use('/api', (req, res) => res.status(404).json({ message: 'ไม่พบ API นี้' }));
 
 // --- Frontend ---
-app.use(express.static(path.join(__dirname, '..', 'public')));
+app.use(express.static(path.join(__dirname, '..', 'frontend')));
 app.get('/favicon.ico', (req, res) => res.status(204).end()); // icon is inline in index.html
 
 // --- Errors ---

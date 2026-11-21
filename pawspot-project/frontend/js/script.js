@@ -3,7 +3,7 @@
 // =====================================================================
 //  Config
 // =====================================================================
-// Keep values in sync with server/constants.js
+// Keep values in sync with backend/constants.js
 const CATEGORIES = [
     { value: 'สุนัข', label: 'สุนัข (Dogs)', emoji: '🐕' },
     { value: 'แมว', label: 'แมว (Cats)', emoji: '🐈' },

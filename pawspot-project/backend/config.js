@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const isProduction = process.env.NODE_ENV === 'production';
 const env = name => (process.env[name] || '').trim();
 
-// In production a fixed JWT_SECRET is required (checked in server/index.js start()).
+// In production a fixed JWT_SECRET is required (checked in backend/server.js start()).
 let jwtSecret = env('JWT_SECRET');
 if (!jwtSecret && !isProduction) {
     jwtSecret = crypto.randomBytes(32).toString('hex');

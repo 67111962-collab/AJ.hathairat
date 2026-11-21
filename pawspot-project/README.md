@@ -32,7 +32,7 @@
 4. เปิด http://localhost:3000 — บัญชีทดสอบ: `admin / 123`, `user / 1234`
 
 ตอนเปิดเซิร์ฟเวอร์ครั้งแรก ระบบจะ**สร้างฐานข้อมูล `pawspot` และตารางให้อัตโนมัติ** พร้อมข้อมูลตัวอย่าง
-(โครงสร้างตารางอยู่ใน [server/schema.sql](server/schema.sql))
+(โครงสร้างตารางอยู่ใน [backend/schema.sql](backend/schema.sql))
 
 ## ดูข้อมูลใน pgAdmin
 
@@ -111,18 +111,29 @@ LINE จะไม่ผูกด้วยอีเมลอัตโนมัต
 ## โครงสร้าง
 
 ```
-public/            หน้าเว็บ: index.html, style.css, script.js (หลัก), map.js (แผนที่),
-                   account.js (โปรไฟล์ + การแจ้งเตือน), admin.js (แดชบอร์ดผู้ดูแล)
-server/
-  index.js         Express app + error handler
-  db.js            เชื่อม PostgreSQL + สร้างฐานข้อมูล/ตารางอัตโนมัติ
-  schema.sql       โครงสร้างตาราง
-  validation.js    ตรวจข้อมูลที่ส่งมา
-  seed.js          ข้อมูลตัวอย่าง
-  models/          users, items, images, logins, notifications — คำสั่ง SQL
-  oauth-providers.js  Google / LINE
-  routes/          auth, oauth, items, images, me, notifications, admin
-  middleware/      JWT auth
+pawspot-project/
+├── frontend/                 หน้าเว็บ (เปิดผ่านเซิร์ฟเวอร์ที่ http://localhost:3000)
+│   ├── index.html
+│   ├── css/style.css
+│   └── js/
+│       ├── script.js         หลัก: รายการประกาศ, รายละเอียด, ลงประกาศ, ล็อกอิน
+│       ├── map.js            แผนที่ (Leaflet)
+│       ├── account.js        โปรไฟล์ + การแจ้งเตือน
+│       └── admin.js          แดชบอร์ดผู้ดูแล
+├── backend/                  เซิร์ฟเวอร์ Express + PostgreSQL
+│   ├── server.js             จุดเริ่มโปรแกรม (npm start / npm run dev)
+│   ├── config.js             อ่านค่าจาก .env
+│   ├── db.js                 เชื่อม PostgreSQL + สร้างฐานข้อมูล/ตารางอัตโนมัติ
+│   ├── schema.sql            โครงสร้างตาราง
+│   ├── seed.js               ข้อมูลตัวอย่าง
+│   ├── validation.js         ตรวจข้อมูลที่ส่งมา
+│   ├── oauth-providers.js    Google / LINE
+│   ├── models/               users, items, images, logins, notifications — คำสั่ง SQL
+│   ├── routes/               auth, oauth, items, images, me, notifications, admin
+│   └── middleware/           JWT auth, request logger
+├── .env                      ค่าลับ (ไม่อยู่ใน git)
+├── .env.example              ตัวอย่างค่าที่ต้องตั้ง
+└── package.json
 ```
 
 ## API
