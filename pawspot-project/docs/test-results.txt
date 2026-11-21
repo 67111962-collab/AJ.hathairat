@@ -1,0 +1,199 @@
+PawSpot - automated test results
+Run: 2026-11-21 12:14 on a separate test PostgreSQL 18 database (not the real data)
+Node v24.19.0
+
+=== Suite 1 API (posts, login, permissions, images, search) ===
+PASS list seeded 
+PASS sorted newest first 
+PASS no passwordHash leak 
+PASS stats 
+PASS search multi-term 
+PASS search regex escaped 
+PASS filter status 
+PASS mine needs auth 
+PASS bad login 401 
+PASS login (case-insens) 
+PASS register 
+PASS dup username 409 
+PASS bad username 400 
+PASS bad token 401 
+PASS create needs auth 
+PASS create validation 400 
+PASS future date 400 
+PASS bad category 400 
+PASS non-image rejected 
+PASS create ok 
+PASS status/reporter not mass-assignable 
+PASS image served 
+PASS other user cannot edit 
+PASS owner edit keeps image 
+PASS admin edit replaces image 
+PASS old image deleted 
+PASS sighting add 
+PASS sighting author deletes 
+PASS other cannot change status 
+PASS owner change status 
+PASS no sightings on closed case 
+PASS mine filter 
+PASS bad id 404 
+PASS other cannot delete 
+PASS owner delete 
+PASS gone after delete 
+PASS pagination 
+PASS api 404 json 
+ALL PASSED
+
+=== Suite 2 Login history ===
+PASS signup without email rejected
+PASS signup with email ok
+PASS login by username ok
+PASS login by email ok
+PASS wrong password 401
+PASS unknown email 401
+PASS demo user login ok
+PASS 6 attempts recorded
+PASS signup recorded as register
+PASS username login stores email
+PASS email login stored
+PASS failed attempt on real account
+PASS failed attempt with unknown email keeps typed email
+PASS demo account has email
+PASS ip + user agent saved
+PASS users.last_login_at updated
+PASS login_emails view: one row per email
+PASS failed-only emails not in login_emails
+ALL PASSED
+
+=== Suite 3 Features (map, matching, notifications, profile, reports, admin) ===
+PASS map points for seeded posts
+PASS map respects filters
+PASS list items include lat/lng
+PASS lat without lng rejected
+PASS bad lat rejected
+PASS create lost cat with pin
+PASS matches endpoint finds the found cat
+PASS owner gets a match notification
+PASS finder gets a match notification too
+PASS editing does not duplicate match notifications
+PASS different category does not match
+PASS owner notified about a sighting
+PASS no notification for your own sighting
+PASS mark one read
+PASS mark all read
+PASS notifications need login
+PASS GET /me with stats
+PASS update name/email
+PASS email taken by other -> 409
+PASS upload avatar
+PASS remove avatar
+PASS wrong current password
+PASS change password
+PASS my sightings
+PASS cannot report own post
+PASS report a post
+PASS report twice updates, not duplicates
+PASS admin notified about report
+PASS non-admin blocked from admin API
+PASS admin stats
+PASS admin reports list
+PASS reported filter
+PASS hide post
+PASS hidden post 404 for public
+PASS hidden post visible to owner
+PASS hidden post not in public list
+PASS hidden post not on public map
+PASS owner told post was hidden
+PASS hiding resolves reports
+PASS unhide
+PASS admin users search
+PASS admin cannot ban self
+PASS ban user
+PASS banned token rejected
+PASS banned user cannot log in
+PASS unban -> login works
+PASS promote to admin
+PASS login history filter
+PASS login history search
+PASS public stats ok
+ALL PASSED
+
+=== Suite 4 Post approval workflow ===
+PASS member post is pending
+PASS pending post hidden from public list
+PASS pending post hidden from map
+PASS pending post 404 for public
+PASS pending post 404 for another member
+PASS owner can see own pending post
+PASS owner sees it in "mine"
+PASS stats do not count pending
+PASS cannot send a tip on a pending post
+PASS admin notified about the new post
+PASS admin stats count pending
+PASS admin pending list
+PASS non-admin cannot review
+PASS bad decision rejected
+PASS reject
+PASS owner told it was rejected, with reason
+PASS rejected post still hidden from public
+PASS edit after reject -> pending again, note cleared
+PASS admin notified about the edit
+PASS approve
+PASS approved post is public
+PASS approved post on map
+PASS stats count it now
+PASS owner told it was approved
+PASS editing an approved post sends it back for review
+PASS ...and hides it from the public
+PASS marking returned keeps it approved
+PASS admin post approved immediately
+PASS admin not notified about own post
+PASS admin owner gets exactly one tip notification
+PASS admin notified about tips on members’ posts
+ALL PASSED
+
+=== Suite 5 Google / LINE login (providers mocked) ===
+PASS providers: google + line only
+PASS google redirect host
+PASS google redirect_uri
+PASS state cookie HttpOnly + SameSite=Lax
+PASS callback redirects with one-time code
+PASS token request sends secret + code
+PASS exchange gives token
+PASS ADMIN_EMAILS + verified Google email -> admin
+PASS google user created from profile
+PASS login code is single-use
+PASS same Google account -> same user
+PASS token works on /me
+PASS password login for social-only account -> 401
+PASS tampered state rejected
+PASS user cancel handled
+PASS callback without state cookie rejected
+PASS provider token failure handled
+PASS unknown provider 404
+PASS verified Google email links existing account
+PASS linking by verified email revokes the unverified signup password
+PASS unverified email does NOT link
+PASS password signup with an admin email stays a normal user
+PASS password login with an admin email stays a normal user
+PASS unverified Google email is not made admin
+PASS verified owner takes over the pre-registered account as admin
+PASS the squatter password no longer works
+PASS facebook login removed (404)
+PASS line redirect
+PASS line user created
+PASS second LINE user gets unique username
+ALL PASSED
+
+=== Suite 6 Production settings ===
+PASS production without JWT_SECRET exits
+PASS production with JWT_SECRET starts
+PASS startup banner shows the public URL
+PASS no demo data seeded
+PASS X-Content-Type-Options
+PASS X-Frame-Options
+PASS Referrer-Policy
+PASS Permissions-Policy allows own geolocation
+PASS HSTS in production
+PASS trust proxy: real client IP recorded
+PASS fresh database has no users
+ALL PASSED

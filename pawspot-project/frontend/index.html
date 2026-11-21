@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="PawSpot ศูนย์กลางรับแจ้งสัตว์เลี้ยงหายและพบสัตว์หลง ช่วยให้น้องๆ ได้กลับบ้าน">
+    <title>PawSpot - ระบบตามหาสัตว์เลี้ยงสูญหาย</title>
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#f8fafc" id="themeColorMeta">
+    <script>
+        // Apply the saved theme before anything is drawn (no white flash in dark mode)
+        (function () {
+            try {
+                var saved = localStorage.getItem('pawspot_theme');
+                var dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (dark) document.documentElement.classList.add('dark');
+            } catch (e) { /* storage blocked: stay light */ }
+        })();
+    </script>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐾</text></svg>">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" rel="stylesheet">
+    <link href="css/style.css" rel="stylesheet">
+</head>
+<body class="text-slate-800 antialiased selection:bg-orange-200 selection:text-orange-900 min-h-screen relative">
+
+    <!-- Background Orbs -->
+    <div class="bg-orbs" aria-hidden="true">
+        <div class="bg-orb orb-1"></div>
+        <div class="bg-orb orb-2"></div>
+        <div class="bg-orb orb-3"></div>
+    </div>
+
+    <!-- Navbar -->
+    <nav class="fixed w-full top-0 z-50 glass-card border-b border-white/60 no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-20 items-center gap-4">
+                <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+                <button id="menuBtn" type="button" aria-label="เปิดเมนู" aria-controls="drawer" aria-expanded="false"
+                        class="relative w-11 h-11 rounded-2xl bg-white/60 border border-white text-slate-700 hover:text-orange-600 hover:bg-orange-50 flex items-center justify-center transition-all shadow-sm">
+                    <i class="fas fa-bars text-lg"></i>
+                    <span id="menuDot" class="hidden absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-white"></span>
+                </button>
+                <a href="#" onclick="window.scrollTo({top:0,behavior:'smooth'});return false;" class="flex items-center gap-3 hover:scale-105 transition-transform shrink-0">
+                    <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-orange-400 to-amber-600 flex items-center justify-center text-white shadow-lg shadow-orange-200 text-xl">🐾</div>
+                    <span class="font-bold text-2xl bg-clip-text text-transparent bg-gradient-to-r from-orange-600 to-amber-700 tracking-tight hidden sm:inline">PawSpot.</span>
+                </a>
+                </div>
+
+                <div class="hidden lg:flex items-center gap-1 text-sm font-medium text-slate-600">
+                    <a href="#listings" class="px-4 py-2 rounded-xl hover:bg-orange-50 hover:text-orange-700 transition-colors">ประกาศทั้งหมด</a>
+                    <a href="#how" class="px-4 py-2 rounded-xl hover:bg-orange-50 hover:text-orange-700 transition-colors">วิธีใช้งาน</a>
+                    <a href="#tips" class="px-4 py-2 rounded-xl hover:bg-orange-50 hover:text-orange-700 transition-colors">เคล็ดลับเมื่อน้องหาย</a>
+                </div>
+
+                <div class="flex items-center gap-2 sm:gap-3">
+                    <button id="themeBtn" type="button" aria-label="สลับโหมดมืด" title="สลับโหมดมืด / สว่าง"
+                            class="w-10 h-10 rounded-2xl bg-white/60 border border-white text-slate-600 hover:text-orange-600 hover:bg-orange-50 flex items-center justify-center transition-all shadow-sm shrink-0">
+                        <i class="fas fa-moon theme-icon-light"></i><i class="fas fa-sun theme-icon-dark text-amber-400"></i>
+                    </button>
+                    <div id="guestMenu" class="flex items-center gap-2 text-sm">
+                        <button onclick="openModal('loginModal')" class="px-4 sm:px-5 py-2.5 rounded-xl text-slate-600 hover:text-orange-600 hover:bg-orange-50/50 font-medium transition-all">เข้าสู่ระบบ</button>
+                        <button onclick="openModal('signupModal')" class="px-4 sm:px-5 py-2.5 rounded-xl bg-slate-900 text-white font-medium hover:bg-slate-800 hover:shadow-lg transition-all shadow-sm">สมัครสมาชิก</button>
+                    </div>
+                    <div id="userMenu" class="hidden flex items-center gap-2 sm:gap-3 text-sm">
+                        <button onclick="handleReportClick()" class="hidden md:flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-600 text-white font-medium shadow-md hover:shadow-lg hover:shadow-orange-500/30 transition-all">
+                            <i class="fas fa-plus"></i> แจ้งเคสใหม่
+                        </button>
+                        <!-- Notifications -->
+                        <div class="relative" id="notifWrap">
+                            <button id="notifBtn" type="button" aria-label="การแจ้งเตือน" aria-haspopup="true" aria-expanded="false" class="relative w-10 h-10 rounded-2xl bg-white/60 border border-white text-slate-600 hover:text-orange-600 hover:bg-orange-50 flex items-center justify-center transition-all shadow-sm">
+                                <i class="far fa-bell text-lg"></i>
+                                <span id="notifBadge" class="hidden absolute -top-1 -right-1 min-w-[1.25rem] h-5 px-1 rounded-full bg-rose-500 text-white text-[11px] font-bold flex items-center justify-center ring-2 ring-white">0</span>
+                            </button>
+                            <div id="notifPanel" class="dropdown-panel hidden right-0 w-[min(22rem,calc(100vw-2rem))]" role="menu">
+                                <div class="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+                                    <span class="font-bold text-slate-800">การแจ้งเตือน</span>
+                                    <button id="notifReadAll" type="button" class="text-xs font-semibold text-orange-600 hover:underline">อ่านทั้งหมด</button>
+                                </div>
+                                <div id="notifList" class="max-h-[60vh] overflow-y-auto"></div>
+                            </div>
+                        </div>
+
+                        <!-- Account menu -->
+                        <div class="relative" id="accountWrap">
+                            <button id="accountBtn" type="button" aria-haspopup="true" aria-expanded="false" class="flex items-center gap-3 bg-white/60 border border-white px-2 sm:px-3 py-1.5 rounded-2xl shadow-sm hover:bg-white transition-all">
+                                <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-orange-400 to-amber-500 flex items-center justify-center text-white font-bold overflow-hidden" id="userAvatar">U</div>
+                                <div class="flex-col leading-tight hidden sm:flex text-left">
+                                    <span class="text-xs text-slate-500" id="userRoleDisplay">Member</span>
+                                    <span id="userNameDisplay" class="font-semibold text-slate-800 max-w-[140px] truncate"></span>
+                                </div>
+                                <i class="fas fa-chevron-down text-xs text-slate-400 hidden sm:block"></i>
+                            </button>
+                            <div id="accountPanel" class="dropdown-panel hidden right-0 w-60" role="menu">
+                                <button type="button" class="menu-item" data-menu="profile"><i class="far fa-user-circle"></i>โปรไฟล์ของฉัน</button>
+                                <button type="button" class="menu-item" data-menu="my-posts"><i class="far fa-folder-open"></i>ประกาศของฉัน</button>
+                                <button type="button" class="menu-item" data-menu="my-tips"><i class="far fa-eye"></i>เบาะแสที่ฉันส่ง</button>
+                                <button type="button" class="menu-item hidden" data-menu="admin" id="menuAdmin"><i class="fas fa-shield-halved"></i>แดชบอร์ดผู้ดูแล</button>
+                                <div class="border-t border-slate-100 my-1"></div>
+                                <button type="button" class="menu-item text-rose-600" data-menu="logout"><i class="fas fa-sign-out-alt"></i>ออกจากระบบ</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-12 no-print">
+
+        <!-- Hero -->
+        <section class="text-center max-w-2xl mx-auto mb-12 animate-fade-in-up">
+            <div class="inline-block px-4 py-1.5 rounded-full bg-orange-100 text-orange-700 text-sm font-medium mb-4 border border-orange-200/50">
+                <i class="fas fa-heart mr-1.5 text-rose-500"></i> พาเด็กๆ กลับบ้านอย่างปลอดภัย
+            </div>
+            <h1 class="text-4xl md:text-5xl font-extrabold text-slate-900 mb-6 leading-tight">
+                ตามหาสัตว์เลี้ยงที่สูญหาย <br/>
+                <span class="text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-amber-500">ส่งต่อความรักและความช่วยเหลือ</span>
+            </h1>
+            <p class="text-slate-500 text-lg mb-8">ศูนย์กลางรับแจ้งสัตว์เลี้ยงหลุดหายและพบเจอ เพื่อช่วยให้น้องๆ ได้กลับสู่อ้อมกอดของเจ้าของอย่างเร็วที่สุด</p>
+
+            <div class="relative group max-w-xl mx-auto flex items-center">
+                <div class="absolute inset-y-0 left-0 flex items-center pl-5 pointer-events-none">
+                    <i class="fas fa-search text-slate-400 group-focus-within:text-orange-500 transition-colors"></i>
+                </div>
+                <input type="search" id="searchInput" autocomplete="off" placeholder="ค้นหาชื่อน้อง, สายพันธุ์, สถานที่, จุดสังเกต..." aria-label="ค้นหาประกาศ"
+                       class="w-full pl-12 pr-36 py-4 bg-white/80 backdrop-blur-md border border-slate-200/60 rounded-2xl focus:ring-4 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all shadow-[0_8px_30px_rgb(0,0,0,0.04)] text-lg">
+                <button onclick="handleReportClick()" class="absolute right-2 top-2 bottom-2 bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white px-5 rounded-xl font-medium shadow-md hover:shadow-lg hover:shadow-orange-500/30 transition-all flex items-center gap-2">
+                    <i class="fas fa-plus"></i> <span class="hidden sm:inline">แจ้งเคสใหม่</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Stats (public) -->
+        <section class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-12 animate-fade-in-up" style="animation-delay: 0.1s">
+            <div class="glass-card rounded-3xl p-5 relative overflow-hidden group">
+                <i class="fas fa-paw text-5xl text-orange-600 absolute top-3 right-3 opacity-10 group-hover:opacity-20 transition-opacity"></i>
+                <div class="text-sm text-slate-500 font-medium mb-1">ประกาศทั้งหมด</div>
+                <div class="text-3xl sm:text-4xl font-extrabold text-slate-800" id="statTotal">0</div>
+            </div>
+            <div class="glass-card rounded-3xl p-5 relative overflow-hidden group border-l-4 border-l-rose-400">
+                <i class="fas fa-search-location text-5xl text-rose-500 absolute top-3 right-3 opacity-10 group-hover:opacity-20 transition-opacity"></i>
+                <div class="text-sm text-slate-500 font-medium mb-1">กำลังตามหาน้อง</div>
+                <div class="text-3xl sm:text-4xl font-extrabold text-slate-800" id="statLost">0</div>
+            </div>
+            <div class="glass-card rounded-3xl p-5 relative overflow-hidden group border-l-4 border-l-sky-400">
+                <i class="fas fa-hand-holding-heart text-5xl text-sky-500 absolute top-3 right-3 opacity-10 group-hover:opacity-20 transition-opacity"></i>
+                <div class="text-sm text-slate-500 font-medium mb-1">พบน้องหลง รอเจ้าของ</div>
+                <div class="text-3xl sm:text-4xl font-extrabold text-slate-800" id="statFound">0</div>
+            </div>
+            <div class="glass-card rounded-3xl p-5 relative overflow-hidden group border-l-4 border-l-emerald-400">
+                <i class="fas fa-home text-5xl text-emerald-500 absolute top-3 right-3 opacity-10 group-hover:opacity-20 transition-opacity"></i>
+                <div class="text-sm text-slate-500 font-medium mb-1">กลับบ้านแล้ว</div>
+                <div class="text-3xl sm:text-4xl font-extrabold text-slate-800" id="statReturned">0</div>
+            </div>
+        </section>
+
+        <!-- Filters -->
+        <section id="listings" class="scroll-mt-28">
+            <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-4 animate-fade-in-up" style="animation-delay: 0.2s">
+                <div class="flex flex-wrap gap-2" role="tablist">
+                    <button data-filter="all" class="filter-btn active">ทั้งหมด</button>
+                    <button data-filter="lost" class="filter-btn inactive">ตามหาสัตว์หาย <span class="ml-1 text-xs bg-slate-100 text-slate-600 rounded-full px-2 py-0.5" id="countLost">0</span></button>
+                    <button data-filter="found" class="filter-btn inactive">พบสัตว์หลง <span class="ml-1 text-xs bg-slate-100 text-slate-600 rounded-full px-2 py-0.5" id="countFound">0</span></button>
+                    <button data-filter="my" id="filterMy" class="filter-btn inactive hidden"><i class="fas fa-user mr-1.5"></i>เคสของฉัน</button>
+                </div>
+
+                <div class="w-full xl:w-auto grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <select id="categoryFilter" aria-label="หมวดสัตว์เลี้ยง" class="select-input">
+                        <option value="all">🐾 สัตว์เลี้ยงทุกประเภท</option>
+                    </select>
+                    <select id="statusFilter" aria-label="สถานะ" class="select-input">
+                        <option value="all">ทุกสถานะ</option>
+                        <option value="pending">กำลังตามหา</option>
+                        <option value="returned">กลับบ้านแล้ว</option>
+                    </select>
+                    <select id="sortSelect" aria-label="เรียงลำดับ" class="select-input">
+                        <option value="newest">ลงประกาศล่าสุด</option>
+                        <option value="oldest">ลงประกาศเก่าสุด</option>
+                        <option value="event">วันที่หาย/พบ ล่าสุด</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between gap-3 mb-6 text-sm text-slate-500">
+                <div class="flex items-center gap-3">
+                    <div class="view-toggle" role="group" aria-label="รูปแบบการแสดงผล">
+                        <button type="button" data-view="list" class="active" aria-pressed="true"><i class="fas fa-th-large mr-1.5"></i>รายการ</button>
+                        <button type="button" data-view="map" aria-pressed="false"><i class="fas fa-map-marked-alt mr-1.5"></i>แผนที่</button>
+                    </div>
+                    <span id="resultCount"></span>
+                </div>
+                <button id="clearFiltersBtn" onclick="resetFilters()" class="hidden text-orange-600 hover:text-orange-700 font-semibold"><i class="fas fa-times-circle mr-1"></i>ล้างตัวกรอง</button>
+            </div>
+
+            <div id="mapView" class="hidden">
+                <div id="itemsMap" class="items-map"></div>
+                <div class="flex flex-wrap items-center gap-4 mt-3 text-xs text-slate-500">
+                    <span><span class="map-legend lost"></span>ตามหาสัตว์หาย</span>
+                    <span><span class="map-legend found"></span>พบสัตว์หลง</span>
+                    <span><span class="map-legend returned"></span>กลับบ้านแล้ว</span>
+                    <span id="mapCount" class="ml-auto"></span>
+                </div>
+            </div>
+            <div id="itemsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
+
+            <div class="text-center mt-10">
+                <button id="loadMoreBtn" onclick="loadMore()" class="hidden px-8 py-3.5 rounded-2xl bg-white/80 border border-slate-200 text-slate-700 font-semibold hover:bg-orange-50 hover:text-orange-700 hover:border-orange-200 shadow-sm transition-all"></button>
+            </div>
+
+            <div id="emptyState" class="hidden flex flex-col items-center justify-center py-20 text-slate-400 glass-card rounded-3xl">
+                <div class="text-6xl mb-4">🐾</div>
+                <h3 class="text-xl font-bold text-slate-700 mb-2">ไม่พบประกาศที่ตรงกับเงื่อนไข</h3>
+                <p class="text-slate-500 text-center px-4 mb-6">ลองเปลี่ยนคำค้นหา หรือเป็นคนแรกที่ลงประกาศแจ้งเรื่องในหมวดนี้</p>
+                <div class="flex gap-3">
+                    <button onclick="resetFilters()" class="px-5 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50">ล้างตัวกรอง</button>
+                    <button onclick="handleReportClick()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-600 text-white font-semibold shadow-md">ลงประกาศ</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- How it works -->
+        <section id="how" class="mt-24 scroll-mt-28">
+            <div class="text-center mb-10">
+                <h2 class="text-3xl font-extrabold text-slate-900 mb-2">ใช้งาน PawSpot อย่างไร?</h2>
+                <p class="text-slate-500">3 ขั้นตอนง่ายๆ ช่วยให้น้องกลับบ้านได้เร็วขึ้น</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="glass-card rounded-3xl p-7">
+                    <div class="w-12 h-12 rounded-2xl bg-orange-100 text-orange-600 flex items-center justify-center text-xl mb-4"><i class="fas fa-bullhorn"></i></div>
+                    <div class="text-xs font-bold text-orange-500 mb-1">ขั้นตอนที่ 1</div>
+                    <h3 class="font-bold text-lg mb-2">ลงประกาศ</h3>
+                    <p class="text-slate-500 text-sm">แจ้งน้องหาย หรือแจ้งว่าพบน้องหลง พร้อมรูปถ่าย จุดสังเกต วันที่และสถานที่</p>
+                </div>
+                <div class="glass-card rounded-3xl p-7">
+                    <div class="w-12 h-12 rounded-2xl bg-sky-100 text-sky-600 flex items-center justify-center text-xl mb-4"><i class="fas fa-share-nodes"></i></div>
+                    <div class="text-xs font-bold text-sky-500 mb-1">ขั้นตอนที่ 2</div>
+                    <h3 class="font-bold text-lg mb-2">แชร์และพิมพ์โปสเตอร์</h3>
+                    <p class="text-slate-500 text-sm">แชร์ลิงก์ประกาศไปยังโซเชียล หรือพิมพ์โปสเตอร์ตามหาไปติดในละแวกที่หาย</p>
+                </div>
+                <div class="glass-card rounded-3xl p-7">
+                    <div class="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-xl mb-4"><i class="fas fa-eye"></i></div>
+                    <div class="text-xs font-bold text-emerald-500 mb-1">ขั้นตอนที่ 3</div>
+                    <h3 class="font-bold text-lg mb-2">รับเบาะแสจากชุมชน</h3>
+                    <p class="text-slate-500 text-sm">ผู้ที่พบเห็นสามารถแจ้งเบาะแสในประกาศได้ทันที เมื่อน้องกลับบ้านแล้วก็ปิดเคสได้เลย</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tips -->
+        <section id="tips" class="mt-20 scroll-mt-28">
+            <div class="glass-card rounded-[2rem] p-8 md:p-10">
+                <h2 class="text-2xl font-extrabold text-slate-900 mb-6"><i class="fas fa-lightbulb text-amber-500 mr-2"></i>น้องหาย ทำอะไรก่อนดี?</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-4 text-slate-600 text-sm">
+                    <div class="flex gap-3"><span class="tip-num">1</span><p><b class="text-slate-800">ค้นหาบริเวณใกล้เคียงทันที</b> สัตว์ส่วนใหญ่มักหลบซ่อนอยู่ไม่ไกล ใต้รถ พุ่มไม้ หรือมุมมืด ภายในรัศมี 1-2 กม.</p></div>
+                    <div class="flex gap-3"><span class="tip-num">2</span><p><b class="text-slate-800">ลงประกาศพร้อมรูปที่ชัดเจน</b> รูปเต็มตัวและจุดสังเกตเด่นช่วยให้คนจำน้องได้ง่ายขึ้น</p></div>
+                    <div class="flex gap-3"><span class="tip-num">3</span><p><b class="text-slate-800">ติดต่อโรงพยาบาลสัตว์และศูนย์พักพิง</b> ในพื้นที่ เผื่อมีคนพาน้องไปฝากไว้</p></div>
+                    <div class="flex gap-3"><span class="tip-num">4</span><p><b class="text-slate-800">ติดโปสเตอร์ในละแวกที่หาย</b> เช่น ร้านสะดวกซื้อ ป้อมยาม และวินมอเตอร์ไซค์</p></div>
+                    <div class="flex gap-3"><span class="tip-num">5</span><p><b class="text-slate-800">วางของที่มีกลิ่นคุ้นเคย</b> เช่น ที่นอนหรือเสื้อผ้าของเจ้าของไว้หน้าบ้าน</p></div>
+                    <div class="flex gap-3"><span class="tip-num">6</span><p><b class="text-slate-800">ระวังมิจฉาชีพ</b> อย่าโอนเงินรางวัลก่อนได้เห็นน้องจริง และนัดเจอในที่สาธารณะเสมอ</p></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="border-t border-slate-200/70 bg-white/50 backdrop-blur-sm no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-slate-500">
+            <div class="flex items-center gap-2"><span class="text-xl">🐾</span><span class="font-bold text-slate-700">PawSpot.</span> พาน้องกลับบ้าน</div>
+            <nav class="flex flex-wrap justify-center gap-x-5 gap-y-1" aria-label="ข้อมูลเว็บไซต์">
+                <a href="#about" class="hover:text-orange-600 hover:underline">เกี่ยวกับเรา</a>
+                <a href="#privacy" class="hover:text-orange-600 hover:underline">นโยบายความเป็นส่วนตัว</a>
+                <a href="#terms" class="hover:text-orange-600 hover:underline">ข้อตกลงการใช้งาน</a>
+                <a href="#contact" class="hover:text-orange-600 hover:underline">ติดต่อเรา</a>
+            </nav>
+            <div>© <span id="year"></span> PawSpot — ร่วมกันพาน้องกลับบ้าน</div>
+        </div>
+    </footer>
+
+    <!-- Side menu (☰) -->
+    <div id="drawer" class="drawer" aria-hidden="true">
+        <div class="drawer-backdrop" data-drawer-close></div>
+        <aside class="drawer-panel" role="dialog" aria-modal="true" aria-label="เมนู">
+            <div class="flex items-center justify-between px-5 h-20 border-b border-slate-100 shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-orange-400 to-amber-600 flex items-center justify-center text-white text-lg">🐾</div>
+                    <span class="font-bold text-xl text-slate-800">PawSpot.</span>
+                </div>
+                <button type="button" class="modal-close" data-drawer-close aria-label="ปิดเมนู">&times;</button>
+            </div>
+            <div id="drawerBody" class="flex-1 overflow-y-auto py-3"></div>
+        </aside>
+    </div>
+
+    <!-- ================= Modals ================= -->
+
+    <!-- Login -->
+    <div id="loginModal" class="modal fixed inset-0 bg-slate-900/40 backdrop-blur-sm hidden z-[100] flex items-center justify-center p-4 opacity-0 transition-opacity duration-300" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+        <div class="auth-card bg-white/95 backdrop-blur-xl rounded-[2rem] shadow-2xl w-full max-w-md transform scale-95 transition-transform duration-300 border border-white relative max-h-[94vh] overflow-y-auto">
+            <button onclick="closeModal('loginModal')" aria-label="ปิด" class="modal-close absolute top-4 right-4">&times;</button>
+            <div class="px-7 py-10 sm:px-10">
+                <div class="text-center mb-8">
+                    <div class="auth-icon"><i class="fas fa-lock"></i></div>
+                    <h2 id="loginTitle" class="text-3xl font-extrabold text-slate-800">เข้าสู่ระบบ</h2>
+                    <p class="text-slate-500 text-sm mt-2">กรุณาเข้าสู่ระบบเพื่อใช้งานระบบ</p>
+                </div>
+
+                <form id="loginForm" class="space-y-4" novalidate>
+                    <div class="input-wrap">
+                        <i class="far fa-user input-icon" aria-hidden="true"></i>
+                        <input type="text" id="loginUsername" required autocomplete="username" aria-label="ชื่อผู้ใช้ หรือ อีเมล" placeholder="ชื่อผู้ใช้ หรือ อีเมล" class="form-input with-icon">
+                    </div>
+                    <div class="input-wrap">
+                        <i class="fas fa-lock input-icon" aria-hidden="true"></i>
+                        <input type="password" id="loginPassword" required autocomplete="current-password" aria-label="รหัสผ่าน" placeholder="รหัสผ่าน" class="form-input with-icon with-action" aria-describedby="loginPwHint">
+                        <button type="button" data-toggle-password="loginPassword" class="input-action" aria-label="แสดงรหัสผ่าน"><i class="far fa-eye"></i></button>
+                    </div>
+                    <p id="loginPwHint" class="hidden text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 -mt-1"><i class="fas fa-keyboard mr-1"></i>แป้นพิมพ์เป็น<b>ภาษาไทย</b>อยู่หรือเปล่า? รหัสผ่านมีตัวอักษรไทย ลองเปลี่ยนเป็นภาษาอังกฤษ (ปุ่ม ~ หรือ Alt+Shift)</p>
+                    <div class="text-right -mt-1">
+                        <button type="button" onclick="forgotPassword()" class="text-sm font-medium text-orange-600 hover:text-orange-700 hover:underline">ลืมรหัสผ่าน?</button>
+                    </div>
+                    <button type="submit" class="btn-gradient w-full">เข้าสู่ระบบ</button>
+                </form>
+
+                <div class="auth-divider"><span>หรือเข้าสู่ระบบด้วย</span></div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <button type="button" data-provider="google" onclick="socialLogin('google')" class="social-btn" aria-label="เข้าสู่ระบบด้วย Google">
+                        <svg viewBox="0 0 48 48" class="w-5 h-5 shrink-0" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.1 29.3 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.6-.4-3.9z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.6-.4-3.9z"/></svg>
+                        <span>Google</span>
+                    </button>
+                    <button type="button" data-provider="line" onclick="socialLogin('line')" class="social-btn" aria-label="เข้าสู่ระบบด้วย LINE">
+                        <i class="fab fa-line text-xl text-[#06C755]" aria-hidden="true"></i><span>LINE</span>
+                    </button>
+                </div>
+
+                <p class="text-center text-sm text-slate-500 mt-8">ยังไม่มีบัญชี? <button type="button" onclick="switchModal('loginModal','signupModal')" class="text-orange-600 font-semibold hover:underline">สมัครสมาชิก</button></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Signup -->
+    <div id="signupModal" class="modal fixed inset-0 bg-slate-900/40 backdrop-blur-sm hidden z-[100] flex items-center justify-center p-4 opacity-0 transition-opacity duration-300" role="dialog" aria-modal="true" aria-labelledby="signupTitle">
+        <div class="auth-card bg-white/95 backdrop-blur-xl rounded-[2rem] shadow-2xl w-full max-w-md transform scale-95 transition-transform duration-300 border border-white relative max-h-[94vh] overflow-y-auto">
+            <button onclick="closeModal('signupModal')" aria-label="ปิด" class="modal-close absolute top-4 right-4">&times;</button>
+            <div class="px-7 py-10 sm:px-10">
+                <div class="text-center mb-8">
+                    <div class="auth-icon"><i class="fas fa-user-plus"></i></div>
+                    <h2 id="signupTitle" class="text-3xl font-extrabold text-slate-800">สมัครสมาชิก</h2>
+                    <p class="text-slate-500 text-sm mt-2">สร้างบัญชีเพื่อเริ่มลงประกาศและแจ้งเบาะแส</p>
+                </div>
+
+                <form id="signupForm" class="space-y-4" novalidate>
+                    <div class="input-wrap">
+                        <i class="far fa-id-card input-icon" aria-hidden="true"></i>
+                        <input type="text" id="signupName" required maxlength="40" autocomplete="name" aria-label="ชื่อที่แสดง" placeholder="ชื่อที่แสดง" class="form-input with-icon">
+                    </div>
+                    <div class="input-wrap">
+                        <i class="far fa-user input-icon" aria-hidden="true"></i>
+                        <input type="text" id="signupUsername" required minlength="3" maxlength="20" autocomplete="username" aria-label="ชื่อผู้ใช้" placeholder="ชื่อผู้ใช้ (a-z, 0-9, _ อย่างน้อย 3 ตัว)" class="form-input with-icon">
+                    </div>
+                    <div class="input-wrap">
+                        <i class="far fa-envelope input-icon" aria-hidden="true"></i>
+                        <input type="email" id="signupEmail" required maxlength="100" autocomplete="email" aria-label="อีเมล" placeholder="อีเมล" class="form-input with-icon">
+                    </div>
+                    <div class="input-wrap">
+                        <i class="fas fa-lock input-icon" aria-hidden="true"></i>
+                        <input type="password" id="signupPassword" required minlength="4" autocomplete="new-password" aria-label="รหัสผ่าน" placeholder="รหัสผ่าน (อย่างน้อย 4 ตัว)" class="form-input with-icon with-action">
+                        <button type="button" data-toggle-password="signupPassword" class="input-action" aria-label="แสดงรหัสผ่าน"><i class="far fa-eye"></i></button>
+                    </div>
+                    <div class="input-wrap">
+                        <i class="fas fa-lock input-icon" aria-hidden="true"></i>
+                        <input type="password" id="signupPassword2" required minlength="4" autocomplete="new-password" aria-label="ยืนยันรหัสผ่าน" placeholder="ยืนยันรหัสผ่าน" class="form-input with-icon">
+                    </div>
+                    <button type="submit" class="btn-gradient w-full !mt-6">สมัครสมาชิก</button>
+                </form>
+
+                <p class="text-center text-sm text-slate-500 mt-8">มีบัญชีแล้ว? <button type="button" onclick="switchModal('signupModal','loginModal')" class="text-orange-600 font-semibold hover:underline">เข้าสู่ระบบ</button></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report / Edit -->
+    <div id="reportModal" class="modal fixed inset-0 bg-slate-900/50 backdrop-blur-md hidden z-[100] flex items-center justify-center p-4 sm:p-6 opacity-0 transition-opacity duration-300" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-3xl transform scale-95 transition-transform duration-300 flex flex-col max-h-[92vh]">
+            <div class="px-6 py-5 sm:px-8 sm:py-6 border-b border-slate-100 flex justify-between items-center rounded-t-[2rem]">
+                <div>
+                    <h2 class="text-2xl font-extrabold text-slate-800" id="modalTitle">ลงประกาศสัตว์เลี้ยง</h2>
+                    <p class="text-slate-500 text-sm mt-1">กรอกรายละเอียดเพื่อเพิ่มโอกาสตามหาน้องเจอ</p>
+                </div>
+                <button onclick="closeModal('reportModal')" aria-label="ปิด" class="modal-close">&times;</button>
+            </div>
+            <div class="overflow-y-auto p-6 sm:p-8">
+                <form id="reportForm" class="space-y-6" novalidate>
+                    <input type="hidden" id="editItemId" value="">
+
+                    <fieldset>
+                        <legend class="form-label mb-3">ประเภทเคส <span class="text-rose-500">*</span></legend>
+                        <div class="grid grid-cols-2 gap-4">
+                            <label class="type-option group">
+                                <input type="radio" name="type" value="lost" class="sr-only" checked>
+                                <div class="w-12 h-12 rounded-full bg-rose-100 text-rose-500 flex items-center justify-center text-xl group-has-[:checked]:bg-orange-500 group-has-[:checked]:text-white transition-colors"><i class="fas fa-search"></i></div>
+                                <span class="font-bold text-slate-700 group-has-[:checked]:text-orange-700">ตามหาสัตว์หาย</span>
+                                <span class="text-xs text-slate-400 text-center">สัตว์เลี้ยงของฉันหาย</span>
+                                <div class="absolute top-3 right-3 opacity-0 group-has-[:checked]:opacity-100 text-orange-500"><i class="fas fa-check-circle text-lg"></i></div>
+                            </label>
+                            <label class="type-option group">
+                                <input type="radio" name="type" value="found" class="sr-only">
+                                <div class="w-12 h-12 rounded-full bg-emerald-100 text-emerald-500 flex items-center justify-center text-xl group-has-[:checked]:bg-orange-500 group-has-[:checked]:text-white transition-colors"><i class="fas fa-hand-holding-heart"></i></div>
+                                <span class="font-bold text-slate-700 group-has-[:checked]:text-orange-700">พบสัตว์หลง</span>
+                                <span class="text-xs text-slate-400 text-center">ฉันพบน้อง กำลังหาเจ้าของ</span>
+                                <div class="absolute top-3 right-3 opacity-0 group-has-[:checked]:opacity-100 text-orange-500"><i class="fas fa-check-circle text-lg"></i></div>
+                            </label>
+                        </div>
+                    </fieldset>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="md:col-span-2">
+                            <span class="form-label">รูปถ่ายน้อง</span>
+                            <div id="dropZone" class="border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center hover:bg-slate-50 transition-colors relative">
+                                <input type="file" id="itemImage" accept="image/*" aria-label="อัปโหลดรูปภาพ" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                                <div id="imagePreviewContainer" class="hidden">
+                                    <img id="imagePreview" src="" alt="ตัวอย่างรูป" class="max-h-56 mx-auto rounded-xl shadow-sm object-cover">
+                                    <div class="mt-3 flex justify-center gap-2 relative z-20">
+                                        <button type="button" onclick="document.getElementById('itemImage').click()" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700"><i class="fas fa-sync-alt mr-1"></i>เปลี่ยนรูป</button>
+                                        <button type="button" onclick="removeImage()" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600"><i class="fas fa-trash-alt mr-1"></i>ลบรูป</button>
+                                    </div>
+                                </div>
+                                <div id="uploadPrompt">
+                                    <div class="w-12 h-12 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center text-xl mx-auto mb-3"><i class="fas fa-camera"></i></div>
+                                    <p class="text-sm font-medium text-slate-600">คลิก หรือ ลากรูปภาพมาวางที่นี่</p>
+                                    <p class="text-xs text-slate-400 mt-1">JPG / PNG / WEBP ไม่เกิน 10MB · รูปหน้าตรงหรือจุดสังเกตจะช่วยได้มาก</p>
+                                </div>
+                                <div id="imageProcessing" class="hidden text-sm text-slate-500"><i class="fas fa-spinner fa-spin mr-2"></i>กำลังประมวลผลรูป...</div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="itemName" class="form-label">ชื่อสัตว์เลี้ยง / หัวข้อ <span class="text-rose-500">*</span></label>
+                            <input type="text" id="itemName" required maxlength="80" class="form-input-sm" placeholder="เช่น น้องมอมแมม, พบแมวส้มแถวตลาด">
+                        </div>
+                        <div>
+                            <label for="itemCategory" class="form-label">หมวดสัตว์เลี้ยง <span class="text-rose-500">*</span></label>
+                            <select id="itemCategory" required class="form-input-sm cursor-pointer">
+                                <option value="" disabled selected>-- เลือกหมวดหมู่ --</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="itemBreed" class="form-label">สายพันธุ์</label>
+                            <input type="text" id="itemBreed" maxlength="60" class="form-input-sm" placeholder="เช่น โกลเด้น, เปอร์เซีย, พันธุ์ไทย...">
+                        </div>
+                        <div>
+                            <label for="itemGenderAge" class="form-label">เพศ & อายุ</label>
+                            <input type="text" id="itemGenderAge" maxlength="60" class="form-input-sm" placeholder="เช่น ผู้ (ทำหมันแล้ว) / 2 ปี">
+                        </div>
+
+                        <div>
+                            <label for="itemLocation" class="form-label">สถานที่หาย / ที่พบเห็น <span class="text-rose-500">*</span></label>
+                            <input type="text" id="itemLocation" required maxlength="120" class="form-input-sm" placeholder="เช่น ซอยสุขุมวิท 21, ใกล้สวนสาธารณะ...">
+                        </div>
+                        <div>
+                            <label for="itemEventDate" class="form-label">วันที่หาย / วันที่พบ <span class="text-rose-500">*</span></label>
+                            <input type="date" id="itemEventDate" required class="form-input-sm">
+                        </div>
+
+                        <div class="md:col-span-2">
+                            <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                                <span class="form-label !mb-0">ปักหมุดตำแหน่งบนแผนที่ <span class="text-slate-400 font-normal">(แนะนำ ช่วยจับคู่กับประกาศใกล้เคียง)</span></span>
+                                <div class="flex gap-2">
+                                    <button type="button" id="pickMyLocation" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-700"><i class="fas fa-location-crosshairs mr-1"></i>ตำแหน่งของฉัน</button>
+                                    <button type="button" id="pickClear" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600"><i class="fas fa-times mr-1"></i>ล้างหมุด</button>
+                                </div>
+                            </div>
+                            <div class="relative mb-2" id="placeSearchWrap">
+                                <div class="input-wrap">
+                                    <i class="fas fa-magnifying-glass input-icon" aria-hidden="true"></i>
+                                    <input type="search" id="placeSearch" maxlength="120" autocomplete="off" aria-label="ค้นหาสถานที่" aria-controls="placeResults"
+                                           placeholder="ค้นหาสถานที่ เช่น สวนลุมพินี, เซ็นทรัลลาดพร้าว, ซอยสุขุมวิท 21" class="form-input-sm with-icon pr-24">
+                                    <button type="button" id="placeSearchBtn" class="absolute right-1.5 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold">ค้นหา</button>
+                                </div>
+                                <ul id="placeResults" class="place-results hidden" role="listbox" aria-label="ผลการค้นหาสถานที่"></ul>
+                            </div>
+                            <div id="pickMap" class="pick-map"></div>
+                            <p id="pickHint" class="text-xs text-slate-400 mt-1.5"><i class="fas fa-hand-pointer mr-1"></i>คลิกบนแผนที่เพื่อปักหมุด หรือลากหมุดเพื่อย้าย</p>
+                        </div>
+
+                        <div class="md:col-span-2">
+                            <label for="itemReward" class="form-label">สินน้ำใจ / เงินรางวัล (ถ้ามี)</label>
+                            <input type="text" id="itemReward" maxlength="60" class="form-input-sm" placeholder="เช่น 3,000 บาท หรือ มีสินน้ำใจให้">
+                        </div>
+
+                        <div class="md:col-span-2">
+                            <label for="itemDesc" class="form-label">จุดสังเกต / สีขน / ลักษณะเด่น <span class="text-rose-500">*</span></label>
+                            <textarea id="itemDesc" rows="4" required maxlength="1000" class="form-input-sm" placeholder="เช่น ขนสีส้ม ปลายหางงอ รอยแผลเป็นที่หูซ้าย ใส่ปลอกคอสีฟ้า..."></textarea>
+                            <div class="text-right text-xs text-slate-400 mt-1"><span id="descCount">0</span>/1000</div>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label for="itemContact" class="form-label">ข้อมูลติดต่อกลับ <span class="text-rose-500">*</span></label>
+                            <input type="text" id="itemContact" required maxlength="120" class="form-input-sm" placeholder="เบอร์โทรศัพท์, Line ID, Facebook...">
+                            <p class="text-xs text-slate-400 mt-1"><i class="fas fa-shield-alt mr-1"></i>ข้อมูลติดต่อจะแสดงเฉพาะในหน้ารายละเอียดประกาศ</p>
+                        </div>
+                    </div>
+
+                    <div class="pt-6 border-t border-slate-100 flex gap-4">
+                        <button type="button" onclick="closeModal('reportModal')" class="flex-1 px-6 py-4 bg-slate-100 text-slate-700 rounded-2xl font-bold hover:bg-slate-200 transition-all">ยกเลิก</button>
+                        <button type="submit" id="submitBtn" class="flex-[2] px-6 py-4 bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white rounded-2xl font-bold shadow-lg shadow-orange-200 transition-all flex justify-center items-center gap-2 disabled:opacity-60">
+                            <i class="fas fa-save"></i> บันทึกประกาศ
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detail -->
+    <div id="detailModal" class="modal fixed inset-0 bg-slate-900/50 backdrop-blur-md hidden z-[105] flex items-center justify-center p-3 sm:p-6 opacity-0 transition-opacity duration-300" role="dialog" aria-modal="true" aria-label="รายละเอียดประกาศ">
+        <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-5xl transform scale-95 transition-transform duration-300 flex flex-col max-h-[94vh] overflow-hidden relative">
+            <button onclick="closeModal('detailModal')" aria-label="ปิด" class="modal-close absolute top-4 right-4 z-30 shadow-md !bg-white/90">&times;</button>
+            <div id="detailContent" class="overflow-y-auto"></div>
+        </div>
+    </div>
+
+    <!-- Profile -->
+    <div id="profileModal" class="modal fixed inset-0 bg-slate-900/50 backdrop-blur-md hidden z-[100] flex items-center justify-center p-3 sm:p-6 opacity-0 transition-opacity duration-300" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
+        <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-4xl transform scale-95 transition-transform duration-300 flex flex-col max-h-[94vh] overflow-hidden">
+            <div class="px-6 py-5 sm:px-8 border-b border-slate-100 flex justify-between items-center gap-4">
+                <div class="flex items-center gap-4 min-w-0">
+                    <div id="profileHeadAvatar" class="w-14 h-14 rounded-full bg-orange-100 text-orange-700 flex items-center justify-center text-xl font-bold overflow-hidden shrink-0"></div>
+                    <div class="min-w-0">
+                        <h2 id="profileTitle" class="text-2xl font-extrabold text-slate-800 truncate">โปรไฟล์ของฉัน</h2>
+                        <p id="profileSub" class="text-slate-500 text-sm truncate"></p>
+                    </div>
+                </div>
+                <button onclick="closeModal('profileModal')" aria-label="ปิด" class="modal-close">&times;</button>
+            </div>
+            <div class="px-6 sm:px-8 pt-4 border-b border-slate-100">
+                <div class="tab-bar" role="tablist">
+                    <button type="button" data-ptab="info" class="active" role="tab">ข้อมูลส่วนตัว</button>
+                    <button type="button" data-ptab="posts" role="tab">ประกาศของฉัน</button>
+                    <button type="button" data-ptab="tips" role="tab">เบาะแสที่ฉันส่ง</button>
+                    <button type="button" data-ptab="security" role="tab">รหัสผ่าน</button>
+                </div>
+            </div>
+            <div id="profileBody" class="overflow-y-auto p-6 sm:p-8"></div>
+        </div>
+    </div>
+
+    <!-- Admin dashboard -->
+    <div id="adminModal" class="modal fixed inset-0 bg-slate-900/50 backdrop-blur-md hidden z-[100] flex items-center justify-center p-2 sm:p-4 opacity-0 transition-opacity duration-300" role="dialog" aria-modal="true" aria-labelledby="adminTitle">
+        <div class="bg-slate-50 rounded-[2rem] shadow-2xl w-full max-w-6xl transform scale-95 transition-transform duration-300 flex flex-col h-[96vh] overflow-hidden">
+            <div class="px-6 py-5 sm:px-8 bg-white border-b border-slate-100 flex justify-between items-center">
+                <div>
+                    <h2 id="adminTitle" class="text-2xl font-extrabold text-slate-800"><i class="fas fa-shield-halved text-orange-500 mr-2"></i>แดชบอร์ดผู้ดูแล</h2>
+                    <p class="text-slate-500 text-sm">ภาพรวมระบบ จัดการผู้ใช้ ประกาศ และรายงาน</p>
+                </div>
+                <button onclick="closeModal('adminModal')" aria-label="ปิด" class="modal-close">&times;</button>
+            </div>
+            <div class="px-6 sm:px-8 pt-4 bg-white border-b border-slate-100">
+                <div class="tab-bar" role="tablist">
+                    <button type="button" data-atab="overview" class="active" role="tab">ภาพรวม</button>
+                    <button type="button" data-atab="pending" role="tab">รออนุมัติ <span id="adminPendingBadge" class="hidden ml-1 px-1.5 rounded-full bg-amber-500 text-white text-[11px]">0</span></button>
+                    <button type="button" data-atab="reports" role="tab">รายงาน <span id="adminReportBadge" class="hidden ml-1 px-1.5 rounded-full bg-rose-500 text-white text-[11px]">0</span></button>
+                    <button type="button" data-atab="items" role="tab">ประกาศ</button>
+                    <button type="button" data-atab="users" role="tab">ผู้ใช้</button>
+                    <button type="button" data-atab="logins" role="tab">ประวัติล็อกอิน</button>
+                </div>
+            </div>
+            <div id="adminBody" class="overflow-y-auto p-4 sm:p-8 flex-1"></div>
+        </div>
+    </div>
+    <div id="chartTip" class="chart-tip hidden" role="tooltip"></div>
+
+    <!-- Info pages: about / privacy / terms / contact -->
+    <div id="infoModal" class="modal fixed inset-0 bg-slate-900/50 backdrop-blur-md hidden z-[100] flex items-center justify-center p-3 sm:p-6 opacity-0 transition-opacity duration-300" role="dialog" aria-modal="true" aria-labelledby="infoTitle">
+        <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-3xl transform scale-95 transition-transform duration-300 flex flex-col max-h-[92vh] overflow-hidden">
+            <div class="px-6 py-5 sm:px-8 border-b border-slate-100 flex justify-between items-center gap-4">
+                <h2 id="infoTitle" class="text-2xl font-extrabold text-slate-800"></h2>
+                <button onclick="closeModal('infoModal')" aria-label="ปิด" class="modal-close">&times;</button>
+            </div>
+            <div id="infoBody" class="overflow-y-auto p-6 sm:p-8 info-content"></div>
+        </div>
+    </div>
+
+    <!-- Confirm -->
+    <div id="confirmModal" class="modal fixed inset-0 bg-slate-900/50 backdrop-blur-md hidden z-[110] flex items-center justify-center p-4 opacity-0 transition-opacity duration-300" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle">
+        <div class="bg-white rounded-[2rem] shadow-2xl max-w-sm w-full p-8 text-center transform scale-95 transition-transform duration-300 relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-2 bg-rose-500"></div>
+            <div class="w-20 h-20 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center text-4xl mx-auto mb-6">
+                <i class="fas fa-trash-alt"></i>
+            </div>
+            <h3 id="confirmTitle" class="text-2xl font-extrabold text-slate-800 mb-3">ยืนยันการลบ?</h3>
+            <p id="confirmText" class="text-slate-500 mb-8">ข้อมูลประกาศจะถูกลบออกจากระบบเป็นการถาวร</p>
+            <div class="flex gap-3">
+                <button onclick="closeModal('confirmModal')" class="flex-1 px-4 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-all">ยกเลิก</button>
+                <button id="confirmDeleteBtn" class="flex-1 px-4 py-3.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-bold shadow-lg shadow-rose-200 transition-all">ลบ</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toastContainer" class="fixed top-24 left-1/2 -translate-x-1/2 z-[200] flex flex-col gap-3 pointer-events-none w-full max-w-sm px-4" aria-live="polite"></div>
+
+    <!-- Printable poster (only visible when printing) -->
+    <div id="printArea" aria-hidden="true"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script src="js/script.js"></script>
+    <script src="js/map.js"></script>
+    <script src="js/account.js"></script>
+    <script src="js/admin.js"></script>
+    <script src="js/pages.js"></script>
+    <script src="js/theme.js"></script>
+    <script src="js/menu.js"></script>
+</body>
+</html>
