@@ -51,6 +51,7 @@ function markRead(userId, ids) {
 
 // After a post is created/edited: tell both owners about possible matches (once per pair).
 async function notifyMatches(item) {
+    if (!item || item.review_status !== 'approved' || item.hidden) return 0;   // only public posts are matched
     try {
         const matches = await items.findMatches(item);
         for (const m of matches) {
@@ -75,4 +76,17 @@ async function notifyMatches(item) {
     }
 }
 
-module.exports = { create, listFor, markRead, notifyMatches };
+// Sends the same notification to every admin (except the one who caused it)
+async function notifyAdmins({ type, itemId = null, actorId = null, message, exclude = [] }) {
+    try {
+        const { rows } = await query("SELECT id FROM users WHERE role = 'admin' AND NOT banned");
+        const skip = new Set(exclude.map(String));
+        for (const a of rows) {
+            if (!skip.has(String(a.id))) await create({ userId: a.id, type, itemId, actorId, message });
+        }
+    } catch (err) {
+        console.error('Could not notify admins:', err.message);
+    }
+}
+
+module.exports = { create, listFor, markRead, notifyMatches, notifyAdmins };

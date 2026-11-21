@@ -102,7 +102,7 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS banned BOOLEAN NOT NULL DEFAULT false
 CREATE TABLE IF NOT EXISTS notifications (
     id          SERIAL PRIMARY KEY,
     user_id     INTEGER      NOT NULL REFERENCES users(id) ON DELETE CASCADE,   -- who receives it
-    type        VARCHAR(20)  NOT NULL CHECK (type IN ('sighting', 'match', 'hidden', 'report')),
+    type        VARCHAR(20)  NOT NULL,   -- allowed values: see notifications_type_check below
     item_id     INTEGER      REFERENCES items(id) ON DELETE CASCADE,
     other_item_id INTEGER    REFERENCES items(id) ON DELETE CASCADE,            -- the matching post
     actor_id    INTEGER      REFERENCES users(id) ON DELETE SET NULL,           -- who caused it
@@ -111,6 +111,17 @@ CREATE TABLE IF NOT EXISTS notifications (
     created_at  TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS notifications_user_idx ON notifications (user_id, created_at DESC);
+ALTER TABLE notifications DROP CONSTRAINT IF EXISTS notifications_type_check;
+ALTER TABLE notifications ADD CONSTRAINT notifications_type_check
+    CHECK (type IN ('sighting', 'match', 'hidden', 'report', 'review', 'approved', 'rejected'));
+
+-- ---------------------------------------------------------------- approval
+-- New posts from members wait for an admin: pending -> approved / rejected.
+-- Existing posts (before this column existed) count as approved.
+ALTER TABLE items ADD COLUMN IF NOT EXISTS review_status VARCHAR(10) NOT NULL DEFAULT 'approved'
+    CHECK (review_status IN ('pending', 'approved', 'rejected'));
+ALTER TABLE items ADD COLUMN IF NOT EXISTS review_note VARCHAR(300);   -- reason when rejected
+CREATE INDEX IF NOT EXISTS items_review_idx ON items (review_status);
 
 -- Reports of fake / scam posts
 CREATE TABLE IF NOT EXISTS reports (

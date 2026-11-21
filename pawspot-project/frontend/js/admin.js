@@ -22,7 +22,7 @@ function renderAdminTab() {
         b.setAttribute('aria-selected', b.dataset.atab === adminTab);
     });
     $('adminBody').innerHTML = '<div class="py-20 text-center text-slate-400"><i class="fas fa-spinner fa-spin text-2xl"></i></div>';
-    ({ overview: adminOverview, reports: adminReports, items: adminItems, users: adminUsers, logins: adminLogins })[adminTab]();
+    ({ overview: adminOverview, pending: adminPending, reports: adminReports, items: adminItems, users: adminUsers, logins: adminLogins })[adminTab]();
 }
 
 const fmtNum = n => Number(n || 0).toLocaleString('th-TH');
@@ -51,6 +51,7 @@ async function adminOverview() {
     if (!data || adminTab !== 'overview') return;
     const t = data.totals;
     setReportBadge(t.reportedItems);
+    setPendingBadge(t.pendingReview);
     const pct = t.items ? Math.round((t.returned / t.items) * 100) : 0;
     const kpi = (label, value, sub, icon) => `
         <div class="kpi">
@@ -69,8 +70,11 @@ async function adminOverview() {
             ${kpi('กลับบ้านแล้ว', `${pct}%`, `${fmtNum(t.returned)} จาก ${fmtNum(t.items)} ประกาศ`, 'fa-home')}
             ${kpi('ล็อกอินวันนี้', fmtNum(t.loginsToday), `ล้มเหลว ${fmtNum(t.failedToday)} ครั้ง`, 'fa-right-to-bracket')}
         </div>
-        ${t.reportedItems || t.hidden ? `
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+        ${t.reportedItems || t.hidden || t.pendingReview ? `
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+            ${t.pendingReview ? `<button class="kpi text-left border-amber-200 bg-amber-50 hover:bg-amber-100" onclick="adminSwitch('pending')">
+                <div class="kpi-label text-amber-800"><i class="fas fa-hourglass-half mr-1"></i>ประกาศรออนุมัติ</div>
+                <div class="kpi-value text-amber-800">${fmtNum(t.pendingReview)}</div><div class="kpi-sub">คลิกเพื่อตรวจ</div></button>` : ''}
             ${t.reportedItems ? `<button class="kpi text-left border-rose-200 bg-rose-50 hover:bg-rose-100" onclick="adminSwitch('reports')">
                 <div class="kpi-label text-rose-700"><i class="fas fa-flag mr-1"></i>ประกาศที่ถูกแจ้ง รอตรวจสอบ</div>
                 <div class="kpi-value text-rose-700">${fmtNum(t.reportedItems)}</div><div class="kpi-sub">คลิกเพื่อตรวจสอบ</div></button>` : ''}
@@ -177,6 +181,8 @@ async function adminItems() {
                 <option value="all">ทุกประกาศ</option>
                 <option value="reported">ถูกแจ้ง (รอตรวจสอบ)</option>
                 <option value="hidden">ที่ซ่อนอยู่</option>
+                <option value="pending">รออนุมัติ</option>
+                <option value="rejected">ไม่ผ่านการอนุมัติ</option>
             </select>
             <input id="aItemsQ" type="search" class="form-input-sm max-w-xs" placeholder="ค้นหาชื่อ สถานที่..." value="${esc(st.q)}">
             <span class="ml-auto self-center text-sm text-slate-500">${fmtNum(data.total)} ประกาศ</span>
@@ -344,6 +350,69 @@ async function adminToggleHidden(item) {
     if (!updated) return;
     const fresh = await api(`/items/${item.id}`).catch(() => null);
     if (fresh) applyDetail(fresh.item);
+}
+
+// ===================================================================== posts waiting for approval
+async function adminPending() {
+    const data = await api('/admin/items?filter=pending&page=1').catch(err => { showToast(err.message, 'error'); return null; });
+    if (!data || adminTab !== 'pending') return;
+    setPendingBadge(data.total);
+    if (!data.items.length) {
+        $('adminBody').innerHTML = '<div class="panel py-16 text-center text-slate-500"><div class="text-5xl mb-3">✅</div>ไม่มีประกาศที่รออนุมัติ</div>';
+        return;
+    }
+    $('adminBody').innerHTML = `
+        <p class="text-sm text-slate-500 mb-4">ประกาศจากสมาชิกจะยังไม่แสดงให้คนทั่วไปเห็นจนกว่าจะอนุมัติ · เรียงจากรอนานที่สุด · ${fmtNum(data.total)} ประกาศ</p>
+        <div class="grid gap-3">${data.items.map(i => `
+            <div class="panel flex flex-col sm:flex-row gap-4">
+                <img src="${esc(imageFor(i))}" data-cat="${esc(i.category)}" onerror="imgFallback(this)" alt="" class="w-full sm:w-36 h-40 sm:h-28 rounded-xl object-cover shrink-0">
+                <div class="min-w-0 flex-1">
+                    <div class="flex flex-wrap items-center gap-2 mb-1">
+                        <span class="pill ${i.type === 'lost' ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-700'}">${typeInfo(i).text}</span>
+                        <span class="text-xs text-slate-400">${catEmoji(i.category)} ${esc(i.category)} · ส่งเมื่อ ${getTimeAgo(i.createdAt)}</span>
+                    </div>
+                    <div class="font-bold text-slate-800 text-lg truncate">${esc(i.name)}</div>
+                    <div class="text-sm text-slate-600 line-clamp-2">${esc(i.desc)}</div>
+                    <div class="text-xs text-slate-500 mt-1"><i class="fas fa-map-marker-alt text-orange-500 mr-1"></i>${esc(i.location)}
+                        · <i class="fas fa-phone text-slate-400 mr-1"></i>${esc(i.contact)} · โดย ${esc(i.reporter.name)}</div>
+                </div>
+                <div class="flex sm:flex-col gap-2 shrink-0 sm:w-32">
+                    <button class="mini-btn flex-1 bg-emerald-600 text-white hover:bg-emerald-700" data-approve="${esc(i.id)}"><i class="fas fa-check mr-1"></i>อนุมัติ</button>
+                    <button class="mini-btn flex-1 bg-rose-50 text-rose-600 hover:bg-rose-100" data-reject="${esc(i.id)}"><i class="fas fa-xmark mr-1"></i>ไม่อนุมัติ</button>
+                    <button class="mini-btn flex-1 bg-slate-100 text-slate-700 hover:bg-slate-200" data-open="${esc(i.id)}">ดูรายละเอียด</button>
+                </div>
+            </div>`).join('')}
+        </div>`;
+    const body = $('adminBody');
+    body.querySelectorAll('[data-open]').forEach(b => b.addEventListener('click', () => openDetail(b.dataset.open)));
+    body.querySelectorAll('[data-approve],[data-reject]').forEach(b => b.addEventListener('click', async () => {
+        const item = data.items.find(i => i.id === (b.dataset.approve || b.dataset.reject));
+        if (await adminReview(item, b.dataset.approve ? 'approve' : 'reject')) adminPending();
+    }));
+}
+
+// Approve or reject a post. Used by the pending tab and by the detail view.
+async function adminReview(item, decision) {
+    let reason = '';
+    if (decision === 'reject') {
+        reason = window.prompt(`เหตุผลที่ไม่อนุมัติ "${item.name}" (เจ้าของประกาศจะได้รับแจ้ง)`, 'ข้อมูลไม่ครบหรือไม่ชัดเจน');
+        if (reason === null) return false;
+    }
+    const res = await attempt(() => api(`/admin/items/${item.id}/review`, { method: 'PATCH', body: { decision, reason } }));
+    if (!res) return false;
+    showToast(decision === 'approve' ? `อนุมัติ "${item.name}" แล้ว` : `ไม่อนุมัติ "${item.name}" แล้ว`);
+    loadItems();
+    if (detailItem?.id === item.id) {
+        const fresh = await api(`/items/${item.id}`).catch(() => null);
+        if (fresh) applyDetail(fresh.item);
+    }
+    if (typeof refreshAdminCount === 'function') refreshAdminCount();
+    return true;
+}
+
+function setPendingBadge(n) {
+    $('adminPendingBadge').textContent = n;
+    $('adminPendingBadge').classList.toggle('hidden', !n);
 }
 
 function setReportBadge(n) {

@@ -41,6 +41,8 @@ function toPublic(row, { sightings, admin = false } = {}) {
         contact: row.contact,
         status: row.status,
         hidden: row.hidden,
+        reviewStatus: row.review_status,
+        reviewNote: row.review_note || null,
         image: row.image_id ? `/api/images/${row.image_id}` : row.image_url,
         reporter: {
             id: String(row.reporter_id), username: row.reporter_username,
@@ -70,15 +72,18 @@ const likePattern = term => `%${term.replace(/[\\%_]/g, c => `\\${c}`)}%`;
 
 // Builds the WHERE clause shared by the list and the map.
 // viewer: { id, admin } - hidden posts are only shown to their owner and to admins.
-function buildWhere({ type, category, status, reporterId, terms = [], hiddenOnly = false, viewer = {} }) {
+function buildWhere({ type, category, status, reporterId, terms = [], hiddenOnly = false, reviewStatus = null, viewer = {} }) {
     const where = [];
     const params = [];
     const add = value => { params.push(value); return `$${params.length}`; };
 
+    // the public only sees approved, not-hidden posts; owners also see their own; admins see everything
+    const PUBLIC = "(NOT i.hidden AND i.review_status = 'approved')";
     if (!viewer.admin) {
-        where.push(viewer.id ? `(NOT i.hidden OR i.reporter_id = ${add(viewer.id)})` : 'NOT i.hidden');
+        where.push(viewer.id ? `(${PUBLIC} OR i.reporter_id = ${add(viewer.id)})` : PUBLIC);
     }
     if (hiddenOnly) where.push('i.hidden');
+    if (reviewStatus) where.push(`i.review_status = ${add(reviewStatus)}`);
     if (type) where.push(`i.type = ${add(type)}`);
     if (status) where.push(`i.status = ${add(status)}`);
     if (category) where.push(`i.category = ${add(category)}`);
@@ -141,7 +146,7 @@ async function sightingsByUser(userId) {
         `SELECT s.id, s.text, s.location, s.created_at, i.id AS item_id, i.name AS item_name, i.type AS item_type,
                 i.status AS item_status
          FROM sightings s JOIN items i ON i.id = s.item_id
-         WHERE s.user_id = $1 AND NOT i.hidden
+         WHERE s.user_id = $1 AND NOT i.hidden AND i.review_status = 'approved'
          ORDER BY s.created_at DESC LIMIT 100`,
         [userId],
     );
@@ -152,25 +157,30 @@ async function sightingsByUser(userId) {
 }
 
 // `db` may be a transaction client
-async function create(db, data, reporterId, imageId) {
+async function create(db, data, reporterId, imageId, reviewStatus = 'pending') {
     const { rows } = await db.query(
         `INSERT INTO items (type, name, category, breed, gender_age, location, event_date, reward, description, contact,
-                            lat, lng, image_id, reporter_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id`,
+                            lat, lng, image_id, reporter_id, review_status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING id`,
         [data.type, data.name, data.category, data.breed, data.genderAge, data.location, data.eventDate,
-            data.reward, data.desc, data.contact, data.lat, data.lng, imageId, reporterId],
+            data.reward, data.desc, data.contact, data.lat, data.lng, imageId, reporterId, reviewStatus],
     );
     return rows[0].id;
 }
 
 // image: undefined = keep, null = remove, number = new image id
-function update(db, id, data, image) {
+// reviewStatus: undefined = keep, otherwise the new review status (edits by members go back to 'pending')
+function update(db, id, data, image, reviewStatus) {
     const params = [id, data.type, data.name, data.category, data.breed, data.genderAge, data.location,
         data.eventDate, data.reward, data.desc, data.contact, data.lat, data.lng];
     let imageSql = '';
     if (image !== undefined) {
         params.push(image);
         imageSql = `, image_id = $${params.length}, image_url = NULL`;
+    }
+    if (reviewStatus !== undefined) {
+        params.push(reviewStatus);
+        imageSql += `, review_status = $${params.length}, review_note = NULL`;
     }
     return db.query(
         `UPDATE items SET type = $2, name = $3, category = $4, breed = $5, gender_age = $6, location = $7,
@@ -183,6 +193,8 @@ function update(db, id, data, image) {
 
 const setStatus = (id, status) => query('UPDATE items SET status = $2, updated_at = now() WHERE id = $1', [id, status]);
 const setHidden = (id, hidden) => query('UPDATE items SET hidden = $2, updated_at = now() WHERE id = $1', [id, hidden]);
+const setReview = (id, status, note = null) =>
+    query('UPDATE items SET review_status = $2, review_note = $3, updated_at = now() WHERE id = $1', [id, status, note]);
 const remove = (db, id) => db.query('DELETE FROM items WHERE id = $1', [id]);
 
 const addSighting = (itemId, userId, { text, location }) => query(
@@ -205,6 +217,7 @@ async function findMatches(item, { km = 5, days = 21, limit = 5 } = {}) {
         `SELECT i.id, i.reporter_id, i.name, ${distanceSql('$1', '$2')} AS km
          FROM items i
          WHERE i.type <> $3 AND i.category = $4 AND i.status = 'pending' AND NOT i.hidden
+           AND i.review_status = 'approved'
            AND i.id <> $5 AND i.reporter_id <> $6
            AND i.lat IS NOT NULL AND i.lng IS NOT NULL
            AND abs(i.event_date - $7::date) <= $8
@@ -224,11 +237,11 @@ async function stats() {
                count(*) FILTER (WHERE type = 'lost'  AND status = 'pending')::int AS "lostActive",
                count(*) FILTER (WHERE type = 'found' AND status = 'pending')::int AS "foundActive",
                count(*) FILTER (WHERE status = 'returned')::int                   AS returned
-        FROM items WHERE NOT hidden`);
+        FROM items WHERE NOT hidden AND review_status = 'approved'`);
     return rows[0];
 }
 
 module.exports = {
-    toPublic, list, mapPoints, findById, sightingsFor, sightingsByUser, create, update, setStatus, setHidden,
+    toPublic, list, mapPoints, findById, sightingsFor, sightingsByUser, create, update, setStatus, setHidden, setReview,
     remove, addSighting, findSighting, removeSighting, findMatches, stats,
 };

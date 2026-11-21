@@ -5,6 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="PawSpot ศูนย์กลางรับแจ้งสัตว์เลี้ยงหายและพบสัตว์หลง ช่วยให้น้องๆ ได้กลับบ้าน">
     <title>PawSpot - ระบบตามหาสัตว์เลี้ยงสูญหาย</title>
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#f8fafc" id="themeColorMeta">
+    <script>
+        // Apply the saved theme before anything is drawn (no white flash in dark mode)
+        (function () {
+            try {
+                var saved = localStorage.getItem('pawspot_theme');
+                var dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (dark) document.documentElement.classList.add('dark');
+            } catch (e) { /* storage blocked: stay light */ }
+        })();
+    </script>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐾</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -25,10 +37,17 @@
     <nav class="fixed w-full top-0 z-50 glass-card border-b border-white/60 no-print">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-20 items-center gap-4">
+                <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+                <button id="menuBtn" type="button" aria-label="เปิดเมนู" aria-controls="drawer" aria-expanded="false"
+                        class="relative w-11 h-11 rounded-2xl bg-white/60 border border-white text-slate-700 hover:text-orange-600 hover:bg-orange-50 flex items-center justify-center transition-all shadow-sm">
+                    <i class="fas fa-bars text-lg"></i>
+                    <span id="menuDot" class="hidden absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-white"></span>
+                </button>
                 <a href="#" onclick="window.scrollTo({top:0,behavior:'smooth'});return false;" class="flex items-center gap-3 hover:scale-105 transition-transform shrink-0">
                     <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-orange-400 to-amber-600 flex items-center justify-center text-white shadow-lg shadow-orange-200 text-xl">🐾</div>
                     <span class="font-bold text-2xl bg-clip-text text-transparent bg-gradient-to-r from-orange-600 to-amber-700 tracking-tight hidden sm:inline">PawSpot.</span>
                 </a>
+                </div>
 
                 <div class="hidden lg:flex items-center gap-1 text-sm font-medium text-slate-600">
                     <a href="#listings" class="px-4 py-2 rounded-xl hover:bg-orange-50 hover:text-orange-700 transition-colors">ประกาศทั้งหมด</a>
@@ -37,6 +56,10 @@
                 </div>
 
                 <div class="flex items-center gap-2 sm:gap-3">
+                    <button id="themeBtn" type="button" aria-label="สลับโหมดมืด" title="สลับโหมดมืด / สว่าง"
+                            class="w-10 h-10 rounded-2xl bg-white/60 border border-white text-slate-600 hover:text-orange-600 hover:bg-orange-50 flex items-center justify-center transition-all shadow-sm shrink-0">
+                        <i class="fas fa-moon theme-icon-light"></i><i class="fas fa-sun theme-icon-dark text-amber-400"></i>
+                    </button>
                     <div id="guestMenu" class="flex items-center gap-2 text-sm">
                         <button onclick="openModal('loginModal')" class="px-4 sm:px-5 py-2.5 rounded-xl text-slate-600 hover:text-orange-600 hover:bg-orange-50/50 font-medium transition-all">เข้าสู่ระบบ</button>
                         <button onclick="openModal('signupModal')" class="px-4 sm:px-5 py-2.5 rounded-xl bg-slate-900 text-white font-medium hover:bg-slate-800 hover:shadow-lg transition-all shadow-sm">สมัครสมาชิก</button>
@@ -245,9 +268,30 @@
     <footer class="border-t border-slate-200/70 bg-white/50 backdrop-blur-sm no-print">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-slate-500">
             <div class="flex items-center gap-2"><span class="text-xl">🐾</span><span class="font-bold text-slate-700">PawSpot.</span> พาน้องกลับบ้าน</div>
+            <nav class="flex flex-wrap justify-center gap-x-5 gap-y-1" aria-label="ข้อมูลเว็บไซต์">
+                <a href="#about" class="hover:text-orange-600 hover:underline">เกี่ยวกับเรา</a>
+                <a href="#privacy" class="hover:text-orange-600 hover:underline">นโยบายความเป็นส่วนตัว</a>
+                <a href="#terms" class="hover:text-orange-600 hover:underline">ข้อตกลงการใช้งาน</a>
+                <a href="#contact" class="hover:text-orange-600 hover:underline">ติดต่อเรา</a>
+            </nav>
             <div>© <span id="year"></span> PawSpot — ร่วมกันพาน้องกลับบ้าน</div>
         </div>
     </footer>
+
+    <!-- Side menu (☰) -->
+    <div id="drawer" class="drawer" aria-hidden="true">
+        <div class="drawer-backdrop" data-drawer-close></div>
+        <aside class="drawer-panel" role="dialog" aria-modal="true" aria-label="เมนู">
+            <div class="flex items-center justify-between px-5 h-20 border-b border-slate-100 shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-orange-400 to-amber-600 flex items-center justify-center text-white text-lg">🐾</div>
+                    <span class="font-bold text-xl text-slate-800">PawSpot.</span>
+                </div>
+                <button type="button" class="modal-close" data-drawer-close aria-label="ปิดเมนู">&times;</button>
+            </div>
+            <div id="drawerBody" class="flex-1 overflow-y-auto py-3"></div>
+        </aside>
+    </div>
 
     <!-- ================= Modals ================= -->
 
@@ -269,9 +313,10 @@
                     </div>
                     <div class="input-wrap">
                         <i class="fas fa-lock input-icon" aria-hidden="true"></i>
-                        <input type="password" id="loginPassword" required autocomplete="current-password" aria-label="รหัสผ่าน" placeholder="รหัสผ่าน" class="form-input with-icon with-action">
+                        <input type="password" id="loginPassword" required autocomplete="current-password" aria-label="รหัสผ่าน" placeholder="รหัสผ่าน" class="form-input with-icon with-action" aria-describedby="loginPwHint">
                         <button type="button" data-toggle-password="loginPassword" class="input-action" aria-label="แสดงรหัสผ่าน"><i class="far fa-eye"></i></button>
                     </div>
+                    <p id="loginPwHint" class="hidden text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 -mt-1"><i class="fas fa-keyboard mr-1"></i>แป้นพิมพ์เป็น<b>ภาษาไทย</b>อยู่หรือเปล่า? รหัสผ่านมีตัวอักษรไทย ลองเปลี่ยนเป็นภาษาอังกฤษ (ปุ่ม ~ หรือ Alt+Shift)</p>
                     <div class="text-right -mt-1">
                         <button type="button" onclick="forgotPassword()" class="text-sm font-medium text-orange-600 hover:text-orange-700 hover:underline">ลืมรหัสผ่าน?</button>
                     </div>
@@ -428,6 +473,15 @@
                                     <button type="button" id="pickClear" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600"><i class="fas fa-times mr-1"></i>ล้างหมุด</button>
                                 </div>
                             </div>
+                            <div class="relative mb-2" id="placeSearchWrap">
+                                <div class="input-wrap">
+                                    <i class="fas fa-magnifying-glass input-icon" aria-hidden="true"></i>
+                                    <input type="search" id="placeSearch" maxlength="120" autocomplete="off" aria-label="ค้นหาสถานที่" aria-controls="placeResults"
+                                           placeholder="ค้นหาสถานที่ เช่น สวนลุมพินี, เซ็นทรัลลาดพร้าว, ซอยสุขุมวิท 21" class="form-input-sm with-icon pr-24">
+                                    <button type="button" id="placeSearchBtn" class="absolute right-1.5 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold">ค้นหา</button>
+                                </div>
+                                <ul id="placeResults" class="place-results hidden" role="listbox" aria-label="ผลการค้นหาสถานที่"></ul>
+                            </div>
                             <div id="pickMap" class="pick-map"></div>
                             <p id="pickHint" class="text-xs text-slate-400 mt-1.5"><i class="fas fa-hand-pointer mr-1"></i>คลิกบนแผนที่เพื่อปักหมุด หรือลากหมุดเพื่อย้าย</p>
                         </div>
@@ -506,6 +560,7 @@
             <div class="px-6 sm:px-8 pt-4 bg-white border-b border-slate-100">
                 <div class="tab-bar" role="tablist">
                     <button type="button" data-atab="overview" class="active" role="tab">ภาพรวม</button>
+                    <button type="button" data-atab="pending" role="tab">รออนุมัติ <span id="adminPendingBadge" class="hidden ml-1 px-1.5 rounded-full bg-amber-500 text-white text-[11px]">0</span></button>
                     <button type="button" data-atab="reports" role="tab">รายงาน <span id="adminReportBadge" class="hidden ml-1 px-1.5 rounded-full bg-rose-500 text-white text-[11px]">0</span></button>
                     <button type="button" data-atab="items" role="tab">ประกาศ</button>
                     <button type="button" data-atab="users" role="tab">ผู้ใช้</button>
@@ -516,6 +571,17 @@
         </div>
     </div>
     <div id="chartTip" class="chart-tip hidden" role="tooltip"></div>
+
+    <!-- Info pages: about / privacy / terms / contact -->
+    <div id="infoModal" class="modal fixed inset-0 bg-slate-900/50 backdrop-blur-md hidden z-[100] flex items-center justify-center p-3 sm:p-6 opacity-0 transition-opacity duration-300" role="dialog" aria-modal="true" aria-labelledby="infoTitle">
+        <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-3xl transform scale-95 transition-transform duration-300 flex flex-col max-h-[92vh] overflow-hidden">
+            <div class="px-6 py-5 sm:px-8 border-b border-slate-100 flex justify-between items-center gap-4">
+                <h2 id="infoTitle" class="text-2xl font-extrabold text-slate-800"></h2>
+                <button onclick="closeModal('infoModal')" aria-label="ปิด" class="modal-close">&times;</button>
+            </div>
+            <div id="infoBody" class="overflow-y-auto p-6 sm:p-8 info-content"></div>
+        </div>
+    </div>
 
     <!-- Confirm -->
     <div id="confirmModal" class="modal fixed inset-0 bg-slate-900/50 backdrop-blur-md hidden z-[110] flex items-center justify-center p-4 opacity-0 transition-opacity duration-300" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle">
@@ -543,5 +609,8 @@
     <script src="js/map.js"></script>
     <script src="js/account.js"></script>
     <script src="js/admin.js"></script>
+    <script src="js/pages.js"></script>
+    <script src="js/theme.js"></script>
+    <script src="js/menu.js"></script>
 </body>
 </html>

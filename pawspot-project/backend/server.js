@@ -30,6 +30,7 @@ app.use('/api/images', require('./routes/images'));
 app.use('/api/me', require('./routes/me'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/geocode', require('./routes/geocode'));
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 app.use('/api', (req, res) => res.status(404).json({ message: 'ไม่พบ API นี้' }));
 

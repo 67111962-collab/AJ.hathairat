@@ -17,11 +17,13 @@ async function sendDetail(req, res, id, status = 200) {
     res.status(status).json({ item: items.toPublic(row, { sightings, admin: isAdmin(req.user) }) });
 }
 
-// Loads :id into req.item. Hidden posts are only visible to their owner and admins.
+const isPublic = item => !item.hidden && item.review_status === 'approved';
+
+// Loads :id into req.item. Hidden or not-yet-approved posts are only visible to their owner and admins.
 async function loadItem(req, res, next) {
     if (!isId(req.params.id)) return res.status(404).json({ message: 'ไม่พบประกาศนี้' });
     const item = await items.findById(Number(req.params.id));
-    if (!item || (item.hidden && !canManage(req.user, item))) {
+    if (!item || (!isPublic(item) && !canManage(req.user, item))) {
         return res.status(404).json({ message: 'ไม่พบประกาศนี้ อาจถูกลบไปแล้ว' });
     }
     req.item = item;
@@ -82,11 +84,20 @@ router.post('/', requireAuth, async (req, res) => {
     const data = validateItem(req.body);
     const image = req.body.image ? images.parseDataUrl(req.body.image) : null;
 
+    // Admins' posts go live at once; members' posts wait for an admin to approve them
+    const reviewStatus = isAdmin(req.user) ? 'approved' : 'pending';
     const id = await transaction(async db => {
         const imageId = image ? await images.create(db, image, req.user.id) : null;
-        return items.create(db, data, req.user.id, imageId);
+        return items.create(db, data, req.user.id, imageId, reviewStatus);
     });
-    await notifications.notifyMatches(await items.findById(id));
+    if (reviewStatus === 'approved') {
+        await notifications.notifyMatches(await items.findById(id));
+    } else {
+        await notifications.notifyAdmins({
+            type: 'review', itemId: id, actorId: req.user.id,
+            message: `ประกาศใหม่รออนุมัติ: "${data.name}" โดย ${req.user.name} (${data.type === 'lost' ? 'ตามหาสัตว์หาย' : 'พบสัตว์หลง'})`,
+        });
+    }
     await sendDetail(req, res, id, 201);
 });
 
@@ -98,13 +109,21 @@ router.put('/:id', requireAuth, loadItem, requireManager, async (req, res) => {
     const newImage = typeof image === 'string' && image.startsWith('data:') ? images.parseDataUrl(image) : null;
     const oldImageId = req.item.image_id;
 
+    // A member's edit is checked again by an admin (so an approved post can't be changed into a scam)
+    const reReview = !isAdmin(req.user) && req.item.review_status !== 'pending';
     await transaction(async db => {
         let imageChange;   // undefined = keep
         if (newImage) imageChange = await images.create(db, newImage, req.user.id);
         else if (image === null) imageChange = null;
-        await items.update(db, req.item.id, data, imageChange);
+        await items.update(db, req.item.id, data, imageChange, reReview ? 'pending' : undefined);
         if (imageChange !== undefined && oldImageId) await images.remove(db, oldImageId);
     });
+    if (reReview) {
+        await notifications.notifyAdmins({
+            type: 'review', itemId: req.item.id, actorId: req.user.id,
+            message: `ประกาศถูกแก้ไข รออนุมัติอีกครั้ง: "${data.name}" โดย ${req.user.name}`,
+        });
+    }
     await notifications.notifyMatches(await items.findById(req.item.id));
     await sendDetail(req, res, req.item.id);
 });
@@ -131,9 +150,10 @@ router.post('/:id/sightings', requireAuth, loadItem, async (req, res) => {
     if (req.item.status === 'returned') return res.status(400).json({ message: 'ประกาศนี้ปิดเคสแล้ว' });
     const sighting = validateSighting(req.body);
     await items.addSighting(req.item.id, req.user.id, sighting);
-    await notifications.create({
-        userId: req.item.reporter_id, type: 'sighting', itemId: req.item.id, actorId: req.user.id,
-        message: `${req.user.name} แจ้งเบาะแสในประกาศ "${req.item.name}": ${sighting.text.slice(0, 120)}`,
+    const message = `${req.user.name} แจ้งเบาะแสในประกาศ "${req.item.name}": ${sighting.text.slice(0, 120)}`;
+    await notifications.create({ userId: req.item.reporter_id, type: 'sighting', itemId: req.item.id, actorId: req.user.id, message });
+    await notifications.notifyAdmins({
+        type: 'sighting', itemId: req.item.id, actorId: req.user.id, message, exclude: [req.item.reporter_id],
     });
     await sendDetail(req, res, req.item.id, 201);
 });

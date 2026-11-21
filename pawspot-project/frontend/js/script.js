@@ -231,6 +231,10 @@ function bindEvents() {
     });
 
     $('loginForm').addEventListener('submit', handleLogin);
+    // Thai characters in the password usually mean the keyboard is in Thai mode (e.g. "123" typed as "ๅ/-")
+    $('loginPassword').addEventListener('input', e => {
+        $('loginPwHint').classList.toggle('hidden', !/[฀-๿]/.test(e.target.value));
+    });
     $('signupForm').addEventListener('submit', handleSignup);
     $('reportForm').addEventListener('submit', submitReport);
     $('itemImage').addEventListener('change', e => handleImageFile(e.target.files[0]));
@@ -279,6 +283,8 @@ function runAction(action, item, el) {
         case 'open-item': openDetail(el.dataset.id); break;
         case 'report': reportPost(item); break;
         case 'admin-hide': if (typeof adminToggleHidden === 'function') adminToggleHidden(item); break;
+        case 'admin-approve': if (typeof adminReview === 'function') adminReview(item, 'approve'); break;
+        case 'admin-reject': if (typeof adminReview === 'function') adminReview(item, 'reject'); break;
     }
 }
 
@@ -615,6 +621,8 @@ function cardHTML(item, idx, animate) {
                 <i class="fas ${t.icon}"></i> ${t.text}
             </div>
             <div class="absolute top-4 right-4 z-20 flex flex-col items-end gap-1.5">${statusBadge(item)}
+                ${item.reviewStatus === 'pending' ? '<span class="bg-amber-100 text-amber-800 text-xs font-bold px-2.5 py-1.5 rounded-lg shadow-md"><i class="fas fa-hourglass-half mr-1"></i>รออนุมัติ</span>' : ''}
+                ${item.reviewStatus === 'rejected' ? '<span class="bg-rose-600 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg shadow-md"><i class="fas fa-circle-xmark mr-1"></i>ไม่ผ่านการอนุมัติ</span>' : ''}
                 ${item.hidden ? '<span class="bg-slate-800 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg shadow-md"><i class="fas fa-eye-slash mr-1"></i>ถูกซ่อน</span>' : ''}
                 ${item.reportCount ? `<span class="bg-rose-600 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg shadow-md"><i class="fas fa-flag mr-1"></i>ถูกแจ้ง ${item.reportCount}</span>` : ''}
             </div>
@@ -701,6 +709,8 @@ function renderDetail() {
             </button>
             <button data-action="edit" class="btn-soft bg-blue-50 text-blue-700 hover:bg-blue-100"><i class="fas fa-edit"></i> แก้ไข</button>
             <button data-action="delete" class="btn-soft bg-rose-50 text-rose-600 hover:bg-rose-100"><i class="fas fa-trash-alt"></i> ลบ</button>
+            ${isAdmin() && item.reviewStatus !== 'approved' ? '<button data-action="admin-approve" class="btn-soft bg-emerald-600 text-white hover:bg-emerald-700"><i class="fas fa-check"></i> อนุมัติ</button>' : ''}
+            ${isAdmin() && item.reviewStatus === 'pending' ? '<button data-action="admin-reject" class="btn-soft bg-rose-50 text-rose-600 hover:bg-rose-100"><i class="fas fa-xmark"></i> ไม่อนุมัติ</button>' : ''}
             ${isAdmin() ? `<button data-action="admin-hide" class="btn-soft bg-slate-100 text-slate-700 hover:bg-slate-200"><i class="fas ${item.hidden ? 'fa-eye' : 'fa-eye-slash'}"></i> ${item.hidden ? 'เลิกซ่อน' : 'ซ่อนประกาศ'}</button>` : ''}
         </div>` : '';
     const canReport = currentUser && !isMine(item.reporter);
@@ -754,6 +764,8 @@ function renderDetail() {
         </div>
         <div class="p-6 sm:p-8">
             <div class="text-sm font-semibold text-orange-600 mb-1">${catEmoji(item.category)} ${esc(item.category)}</div>
+            ${item.reviewStatus === 'pending' ? '<div class="mb-3 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-sm"><i class="fas fa-hourglass-half mr-2"></i>ประกาศนี้<b>รอผู้ดูแลอนุมัติ</b> ตอนนี้มีแค่คุณและผู้ดูแลที่มองเห็น</div>' : ''}
+            ${item.reviewStatus === 'rejected' ? `<div class="mb-3 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm"><i class="fas fa-circle-xmark mr-2"></i><b>ไม่ผ่านการอนุมัติ</b>${item.reviewNote ? `: ${esc(item.reviewNote)}` : ''} — แก้ไขประกาศแล้วระบบจะส่งให้ผู้ดูแลตรวจใหม่</div>` : ''}
             ${item.hidden ? '<div class="mb-3 p-3 rounded-xl bg-slate-800 text-white text-sm"><i class="fas fa-eye-slash mr-2"></i>ประกาศนี้ถูกซ่อนโดยผู้ดูแลระบบ คนอื่นจะมองไม่เห็น</div>' : ''}
             <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 mb-3 pr-10 break-words">${esc(item.name)}</h2>
             ${item.reward ? `<div class="inline-flex items-center gap-2 text-sm font-bold text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl mb-4"><i class="fas fa-gift text-amber-500"></i> สินน้ำใจ: ${esc(item.reward)}</div>` : ''}
@@ -1077,7 +1089,11 @@ async function submitReport(e) {
     if (editId) updateListItem(res.item);
     else loadItems();
     loadStats();
-    showToast(editId ? 'อัปเดตประกาศสำเร็จ' : 'ลงประกาศสำเร็จ 🎉 แชร์ต่อเพื่อเพิ่มโอกาสพบน้อง');
+    if (res.item.reviewStatus === 'pending') {
+        showToast(editId ? 'บันทึกแล้ว ประกาศจะแสดงอีกครั้งหลังผู้ดูแลอนุมัติ' : 'ส่งประกาศแล้ว 🎉 รอผู้ดูแลอนุมัติก่อนแสดงให้ทุกคนเห็น', 'info');
+    } else {
+        showToast(editId ? 'อัปเดตประกาศสำเร็จ' : 'ลงประกาศสำเร็จ 🎉 แชร์ต่อเพื่อเพิ่มโอกาสพบน้อง');
+    }
     setTimeout(() => openDetail(res.item.id), 320);
 }
 
@@ -1149,6 +1165,7 @@ function closeModal(id) {
         detailItem = null;
         if (location.hash.startsWith('#case-')) setHash('');
     }
+    if (id === 'infoModal' && /^#(about|privacy|terms|contact)$/.test(location.hash)) setHash('');
 }
 
 function switchModal(from, to) {

@@ -21,6 +21,9 @@ const NOTIF_STYLE = {
     sighting: { icon: 'fa-eye', cls: 'bg-sky-100 text-sky-600' },
     match: { icon: 'fa-link', cls: 'bg-amber-100 text-amber-600' },
     hidden: { icon: 'fa-eye-slash', cls: 'bg-slate-200 text-slate-600' },
+    review: { icon: 'fa-hourglass-half', cls: 'bg-amber-100 text-amber-600' },
+    approved: { icon: 'fa-circle-check', cls: 'bg-emerald-100 text-emerald-600' },
+    rejected: { icon: 'fa-circle-xmark', cls: 'bg-rose-100 text-rose-600' },
     report: { icon: 'fa-flag', cls: 'bg-rose-100 text-rose-600' },
 };
 let notifState = { notifications: [], unread: 0 };
@@ -44,6 +47,7 @@ function renderNotifications() {
     badge.textContent = notifState.unread > 99 ? '99+' : notifState.unread;
     badge.classList.toggle('hidden', !notifState.unread);
     $('notifBtn').setAttribute('aria-label', `การแจ้งเตือน${notifState.unread ? ` (ยังไม่อ่าน ${notifState.unread})` : ''}`);
+    document.dispatchEvent(new CustomEvent('pawspot:notifs', { detail: { unread: notifState.unread } }));
 
     const list = $('notifList');
     if (!notifState.notifications.length) {
@@ -222,6 +226,8 @@ async function renderProfilePosts() {
                 <div class="flex flex-wrap items-center gap-2 mb-1">
                     <span class="font-bold text-slate-800 truncate">${esc(item.name)}</span>
                     ${statusBadge(item)}
+                    ${item.reviewStatus === 'pending' ? '<span class="pill bg-amber-100 text-amber-800"><i class="fas fa-hourglass-half"></i>รออนุมัติ</span>' : ''}
+                    ${item.reviewStatus === 'rejected' ? `<span class="pill bg-rose-50 text-rose-600" title="${esc(item.reviewNote || '')}"><i class="fas fa-circle-xmark"></i>ไม่ผ่านการอนุมัติ</span>` : ''}
                     ${item.hidden ? '<span class="pill bg-slate-800 text-white"><i class="fas fa-eye-slash"></i>ถูกซ่อน</span>' : ''}
                     ${item.lat == null ? '<span class="pill bg-amber-50 text-amber-700" title="ปักหมุดเพื่อให้ระบบช่วยจับคู่"><i class="fas fa-map-pin"></i>ยังไม่ปักหมุด</span>' : ''}
                 </div>

@@ -110,6 +110,8 @@ function showPickHint() {
 }
 
 function openPicker(item) {
+    $('placeSearch').value = '';
+    hidePlaceResults();
     if (!leafletReady()) {
         $('pickMap').innerHTML = '<div class="h-full flex items-center justify-center text-sm text-slate-400">โหลดแผนที่ไม่สำเร็จ</div>';
         return;
@@ -136,6 +138,60 @@ function useMyLocation() {
     );
 }
 
+// ===================================================================== place search for the picker
+let placeResults = [];
+let placeSearchId = 0;
+
+function hidePlaceResults() {
+    $('placeResults').classList.add('hidden');
+    $('placeResults').innerHTML = '';
+}
+
+async function searchPlace() {
+    const q = $('placeSearch').value.trim();
+    if (q.length < 2) return showToast('พิมพ์ชื่อสถานที่อย่างน้อย 2 ตัวอักษร', 'info');
+    const id = ++placeSearchId;
+    const btn = $('placeSearchBtn');
+    setBusy(btn, true, '');
+    const list = $('placeResults');
+    list.innerHTML = '<li class="pr-empty"><i class="fas fa-spinner fa-spin mr-2"></i>กำลังค้นหา...</li>';
+    list.classList.remove('hidden');
+    const data = await api(`/geocode?q=${encodeURIComponent(q)}`).catch(err => ({ error: err.message }));
+    setBusy(btn, false);
+    if (id !== placeSearchId) return;   // a newer search started
+
+    if (data.error) {
+        list.innerHTML = `<li class="pr-empty"><i class="fas fa-triangle-exclamation text-amber-500 mr-2"></i>${esc(data.error)}</li>`;
+        return;
+    }
+    placeResults = data.results;
+    if (!placeResults.length) {
+        list.innerHTML = `<li class="pr-empty">ไม่พบ "${esc(q)}" ลองพิมพ์ชื่อให้สั้นลง หรือใส่ชื่อเขต/จังหวัด เช่น "ตลาดนัดจตุจักร" หรือคลิกปักหมุดบนแผนที่เอง</li>`;
+        return;
+    }
+    list.innerHTML = placeResults.map((r, i) => `
+        <li><button type="button" data-place="${i}" role="option">
+            <i class="fas fa-location-dot text-orange-500 mt-1"></i>
+            <span class="min-w-0"><span class="pr-name block">${esc(r.name)}</span><span class="pr-full">${esc(r.fullName)}</span></span>
+        </button></li>`).join('');
+    list.querySelector('button')?.focus();
+}
+
+function choosePlace(i) {
+    const r = placeResults[i];
+    if (!r) return;
+    hidePlaceResults();
+    $('placeSearch').value = r.name;
+    setPick([r.lat, r.lng]);
+    pickMap.setView([r.lat, r.lng], 16);
+    // fill the "location" text too, if the user hasn't typed one yet
+    if (!$('itemLocation').value.trim()) {
+        $('itemLocation').value = r.name.slice(0, 120);
+        $('itemLocation').classList.remove('invalid');
+    }
+    showToast('ปักหมุดแล้ว ลากหมุดเพื่อปรับให้ตรงจุดได้');
+}
+
 // ===================================================================== small map in the detail view
 let detailMap = null;
 
@@ -153,6 +209,25 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => setViewMode(b.dataset.view)));
     $('pickMyLocation').addEventListener('click', useMyLocation);
     $('pickClear').addEventListener('click', () => setPick(null));
+
+    // place search: Enter or the button (no search-as-you-type, per OpenStreetMap's rules)
+    $('placeSearch').addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); searchPlace(); }
+        if (e.key === 'Escape' && !$('placeResults').classList.contains('hidden')) { e.stopPropagation(); hidePlaceResults(); }
+    });
+    $('placeSearchBtn').addEventListener('click', searchPlace);
+    $('placeResults').addEventListener('click', e => {
+        const b = e.target.closest('[data-place]');
+        if (b) choosePlace(Number(b.dataset.place));
+    });
+    $('placeResults').addEventListener('keydown', e => {
+        const items = [...$('placeResults').querySelectorAll('button')];
+        const i = items.indexOf(document.activeElement);
+        if (e.key === 'ArrowDown') { e.preventDefault(); items[Math.min(i + 1, items.length - 1)]?.focus(); }
+        if (e.key === 'ArrowUp') { e.preventDefault(); i <= 0 ? $('placeSearch').focus() : items[i - 1].focus(); }
+        if (e.key === 'Escape') { e.stopPropagation(); hidePlaceResults(); $('placeSearch').focus(); }
+    });
+    document.addEventListener('click', e => { if (!e.target.closest('#placeSearchWrap')) hidePlaceResults(); });
 });
 document.addEventListener('pawspot:list', loadMapPoints);
 document.addEventListener('pawspot:report-form', e => openPicker(e.detail));

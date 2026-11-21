@@ -22,6 +22,7 @@ router.get('/stats', async (req, res) => {
           (SELECT count(*)::int FROM items)                                                     AS items,
           (SELECT count(*)::int FROM items WHERE status = 'returned')                           AS returned,
           (SELECT count(*)::int FROM items WHERE hidden)                                        AS hidden,
+          (SELECT count(*)::int FROM items WHERE review_status = 'pending')                    AS "pendingReview",
           (SELECT count(*)::int FROM sightings)                                                 AS sightings,
           (SELECT count(DISTINCT item_id)::int FROM reports WHERE NOT resolved)                 AS "reportedItems",
           (SELECT count(*)::int FROM login_history WHERE success AND created_at >= current_date) AS "loginsToday",
@@ -102,6 +103,8 @@ router.get('/items', async (req, res) => {
         viewer: { admin: true },
         hiddenOnly: filter === 'hidden',
         reportedOnly: filter === 'reported',
+        reviewStatus: ['pending', 'rejected'].includes(filter) ? filter : null,
+        sort: filter === 'pending' ? 'oldest' : 'newest',   // oldest waiting first
         terms: String(req.query.q ?? '').trim().split(/\s+/).filter(Boolean).slice(0, 8),
         page, limit: 20,
     });
@@ -121,6 +124,33 @@ router.patch('/items/:id/hidden', async (req, res) => {
             userId: item.reporter_id, type: 'hidden', itemId: item.id, actorId: req.user.id,
             message: `ประกาศ "${item.name}" ถูกซ่อนโดยผู้ดูแลระบบ${req.body?.reason ? `: ${String(req.body.reason).slice(0, 150)}` : ''}`,
         });
+    }
+    res.json({ item: items.toPublic(await items.findById(item.id), { admin: true }) });
+});
+
+// body: { decision: 'approve' | 'reject', reason? }
+router.patch('/items/:id/review', async (req, res) => {
+    if (!isId(req.params.id)) return res.status(404).json({ message: 'ไม่พบประกาศนี้' });
+    const item = await items.findById(Number(req.params.id));
+    if (!item) return res.status(404).json({ message: 'ไม่พบประกาศนี้' });
+    const { decision } = req.body ?? {};
+    const reason = String(req.body?.reason ?? '').trim().slice(0, 300);
+
+    if (decision === 'approve') {
+        await items.setReview(item.id, 'approved');
+        await notifications.create({
+            userId: item.reporter_id, type: 'approved', itemId: item.id, actorId: req.user.id,
+            message: `ประกาศ "${item.name}" ได้รับการอนุมัติแล้ว ทุกคนมองเห็นได้แล้ว`,
+        });
+        await notifications.notifyMatches(await items.findById(item.id));   // now it can be matched
+    } else if (decision === 'reject') {
+        await items.setReview(item.id, 'rejected', reason || null);
+        await notifications.create({
+            userId: item.reporter_id, type: 'rejected', itemId: item.id, actorId: req.user.id,
+            message: `ประกาศ "${item.name}" ไม่ผ่านการอนุมัติ${reason ? `: ${reason}` : ''} แก้ไขแล้วส่งใหม่ได้`,
+        });
+    } else {
+        return res.status(400).json({ message: 'ต้องเป็น approve หรือ reject' });
     }
     res.json({ item: items.toPublic(await items.findById(item.id), { admin: true }) });
 });
