@@ -1,173 +1,288 @@
-# PawSpot 🐾
+# PawSpot 🐾 — ระบบตามหาสัตว์เลี้ยงสูญหาย
 
-เว็บกลางสำหรับแจ้งสัตว์เลี้ยงหายและพบสัตว์หลง — Express + PostgreSQL + HTML/Tailwind
+> Mini Project · เว็บแอปพลิเคชันกลางสำหรับ **แจ้งสัตว์เลี้ยงหาย** และ **แจ้งพบสัตว์หลง**
+> พร้อมแผนที่ ระบบจับคู่ประกาศอัตโนมัติ การแจ้งเตือน และระบบผู้ดูแล
 
-## ฟีเจอร์
-
-- **ประกาศ** ตามหาสัตว์หาย / พบสัตว์หลง พร้อมรูป ค้นหา กรองหมวด/สถานะ เรียงลำดับ
-- **แผนที่** ปักหมุดตำแหน่งตอนลงประกาศ ดูทุกประกาศบนแผนที่ (สลับ "รายการ / แผนที่") และแผนที่เล็กในหน้ารายละเอียด (Leaflet + OpenStreetMap)
-- **จับคู่อัตโนมัติ** ถ้าประกาศ "หาย" กับ "พบ" เป็นสัตว์ประเภทเดียวกัน ห่างกันไม่เกิน 5 กม. และวันที่ห่างกันไม่เกิน 21 วัน ระบบจะแจ้งเตือนเจ้าของทั้งสองฝั่ง และแสดงในหน้ารายละเอียด
-- **การแจ้งเตือน** (กระดิ่ง) เมื่อมีคนแจ้งเบาะแส มีประกาศที่อาจตรงกัน ประกาศถูกซ่อน หรือ (สำหรับผู้ดูแล) มีคนแจ้งประกาศไม่เหมาะสม
-- **โปรไฟล์** แก้ชื่อ อีเมล รูปโปรไฟล์ เปลี่ยน/ตั้งรหัสผ่าน ดูประกาศของฉันและเบาะแสที่เคยส่ง
-- **แจ้งประกาศไม่เหมาะสม** กันมิจฉาชีพ
-- **แดชบอร์ดผู้ดูแล** ภาพรวม + กราฟ 30 วัน, ตรวจรายงาน, ซ่อน/ลบประกาศ, ตั้งผู้ดูแล/ระงับผู้ใช้, ประวัติการเข้าสู่ระบบ
-- **เข้าสู่ระบบ** ด้วยชื่อผู้ใช้/อีเมล + รหัสผ่าน, Google หรือ LINE และเก็บประวัติการล็อกอินทุกครั้ง
-
-## เริ่มใช้งาน
-
-1. ติดตั้ง [PostgreSQL](https://www.postgresql.org/download/) (มี pgAdmin มาด้วย)
-2. เปิดไฟล์ `.env` (คัดลอกจาก `.env.example`) แล้วใส่รหัสผ่าน PostgreSQL ที่ตั้งไว้ตอนติดตั้ง
-
-   ```
-   PGPASSWORD=รหัสผ่านของคุณ
-   ```
-
-3. รัน
-
-   ```bash
-   npm install
-   npm run dev
-   ```
-
-4. เปิด http://localhost:3000 — บัญชีทดสอบ: `admin / 123`, `user / 1234`
-
-ตอนเปิดเซิร์ฟเวอร์ครั้งแรก ระบบจะ**สร้างฐานข้อมูล `pawspot` และตารางให้อัตโนมัติ** พร้อมข้อมูลตัวอย่าง
-(โครงสร้างตารางอยู่ใน [backend/schema.sql](backend/schema.sql))
-
-## ดูข้อมูลใน pgAdmin
-
-เปิด pgAdmin 4 → **Servers → PostgreSQL 18 → Databases → pawspot → Schemas → public → Tables**
-
-| ตาราง | เก็บอะไร |
+| | |
 |---|---|
-| `users` | สมาชิก (รหัสผ่านเก็บแบบ bcrypt hash) |
-| `items` | ประกาศสัตว์หาย / พบสัตว์หลง |
-| `sightings` | เบาะแสจากผู้พบเห็น |
-| `images` | รูปภาพที่อัปโหลด (bytea) |
-| `login_history` | ประวัติการเข้าสู่ระบบทุกครั้ง (อีเมล, ชื่อผู้ใช้, วิธีล็อกอิน, สำเร็จหรือไม่, IP, เวลา) |
-| `notifications` | การแจ้งเตือนของแต่ละคน (เบาะแส, จับคู่, ถูกซ่อน, รายงาน) |
-| `reports` | การแจ้งประกาศไม่เหมาะสม |
-| `login_emails` (View) | สรุปอีเมลทุกอีเมลที่เคยล็อกอินสำเร็จ — จำนวนครั้ง, ครั้งแรก, ครั้งล่าสุด อยู่ใน **Schemas → public → Views** |
+| **ผู้จัดทำ** | Passwich Suksumak · รหัสนักศึกษา 67111962 |
+| **GitHub** | https://github.com/67111962-collab/AJ.hathairat/tree/pawspot-online/pawspot-project |
+| **เทคโนโลยีหลัก** | HTML · CSS (Tailwind) · JavaScript · Node.js · Express · PostgreSQL |
 
-คลิกขวาที่ตาราง → **View/Edit Data → All Rows** เพื่อดูข้อมูล หรือเปิด **Query Tool** แล้วลอง
+![หน้าแรก](docs/screenshots/01-home.jpg)
 
-```sql
-SELECT i.id, i.name, i.type, i.status, u.username AS reporter
-FROM items i JOIN users u ON u.id = i.reporter_id
-ORDER BY i.created_at DESC;
+---
+
+## สารบัญ
+1. [วัตถุประสงค์](#1-วัตถุประสงค์)
+2. [ฟีเจอร์](#2-ฟีเจอร์)
+3. [เครื่องมือและเทคโนโลยี](#3-เครื่องมือและเทคโนโลยี)
+4. [โครงสร้างและการทำงานของระบบ](#4-โครงสร้างและการทำงานของระบบ)
+5. [การติดตั้งและใช้งาน](#5-การติดตั้งและใช้งาน)
+6. [วิธีใช้งานเว็บ](#6-วิธีใช้งานเว็บ)
+7. [ฐานข้อมูล](#7-ฐานข้อมูล)
+8. [API](#8-api)
+9. [การทดสอบ](#9-การทดสอบ)
+10. [ภาพตัวอย่างการทำงาน](#10-ภาพตัวอย่างการทำงาน)
+11. [เข้าสู่ระบบด้วย Google / LINE](#11-เข้าสู่ระบบด้วย-google--line-ไม่บังคับ)
+12. [ขึ้นเว็บจริง (Render + Neon)](#12-ขึ้นเว็บจริง-render--neon)
+13. [สรุปผลและแนวทางปรับปรุง](#13-สรุปผลและแนวทางปรับปรุง)
+
+---
+
+## 1. วัตถุประสงค์
+
+- เป็น **ศูนย์กลาง** ให้เจ้าของสัตว์เลี้ยงที่หาย กับคนที่พบสัตว์หลง ได้เจอกันเร็วที่สุด (แทนการโพสต์กระจัดกระจายในโซเชียล)
+- ช่วยให้ **ค้นหาง่าย** ด้วยตัวกรอง การค้นหา และ **แผนที่** ที่เห็นว่าน้องหาย/ถูกพบที่ไหน
+- ใช้ระบบ **จับคู่อัตโนมัติ** แจ้งเตือนเมื่อมีประกาศ "หาย" กับ "พบ" ที่อาจเป็นน้องตัวเดียวกัน
+- ลด **ประกาศปลอม/มิจฉาชีพ** ด้วยการอนุมัติประกาศ การรายงาน และแดชบอร์ดผู้ดูแล
+- ฝึกพัฒนาเว็บแบบครบวงจร: Frontend, Backend (REST API), ฐานข้อมูล, ระบบล็อกอิน และการ deploy
+
+## 2. ฟีเจอร์
+
+| หมวด | ฟีเจอร์ |
+|---|---|
+| **ประกาศ** | ลงประกาศสัตว์หาย / พบสัตว์หลง พร้อมรูป (ย่อรูปอัตโนมัติ) · ค้นหา · กรองหมวด/สถานะ · เรียงลำดับ · โหลดเพิ่มทีละหน้า |
+| **แผนที่** | ปักหมุดตำแหน่ง · **ค้นหาสถานที่แล้วปักหมุด** · ใช้ตำแหน่งปัจจุบัน · ดูทุกประกาศบนแผนที่ · แผนที่เล็กในหน้ารายละเอียด |
+| **จับคู่อัตโนมัติ** | ประกาศ "หาย" ↔ "พบ" ประเภทเดียวกัน ห่างไม่เกิน 5 กม. วันที่ต่างกันไม่เกิน 21 วัน → แจ้งเตือนทั้งสองฝั่ง |
+| **เบาะแส** | ผู้พบเห็นแจ้งเบาะแสในประกาศ · เจ้าของได้รับแจ้งเตือน |
+| **ช่วยกระจายข่าว** | แชร์ลิงก์ประกาศ · พิมพ์โปสเตอร์ "ตามหา!" ขนาด A4 |
+| **บัญชีผู้ใช้** | สมัคร/ล็อกอินด้วยชื่อผู้ใช้หรืออีเมล + รหัสผ่าน · **Google** · **LINE** · โปรไฟล์ (ชื่อ อีเมล รูป รหัสผ่าน) · ประกาศของฉัน · เบาะแสที่ฉันส่ง |
+| **การแจ้งเตือน** | กระดิ่งแจ้งเตือน: เบาะแสใหม่, ประกาศที่อาจตรงกัน, อนุมัติ/ไม่อนุมัติ, ประกาศถูกซ่อน |
+| **ความปลอดภัย** | รหัสผ่านเข้ารหัส bcrypt · JWT · จำกัดการเดารหัส · ป้องกัน XSS / SQL Injection · แจ้งประกาศไม่เหมาะสม |
+| **ผู้ดูแล (Admin)** | แดชบอร์ด + กราฟ 30 วัน · **อนุมัติประกาศก่อนขึ้นเว็บ** · ตรวจรายงาน · ซ่อน/ลบประกาศ · ตั้งผู้ดูแล/ระงับผู้ใช้ · ประวัติการเข้าสู่ระบบ |
+| **การใช้งาน** | รองรับมือถือ · เมนู ☰ แบ่งหมวดตามสิทธิ์ · **โหมดมืด** · หน้าเกี่ยวกับเรา / นโยบายความเป็นส่วนตัว / ข้อตกลง / ติดต่อเรา |
+
+## 3. เครื่องมือและเทคโนโลยี
+
+| ส่วน | เทคโนโลยี | ใช้ทำอะไร |
+|---|---|---|
+| Frontend | HTML5, CSS3, **Tailwind CSS** (CDN) | หน้าเว็บ + รองรับมือถือ + โหมดมืด |
+| | **JavaScript** (ไม่ใช้ framework) | การทำงานของหน้าเว็บ, เรียก API ด้วย Fetch |
+| | **Leaflet** + **OpenStreetMap** / Nominatim | แผนที่ ปักหมุด และค้นหาสถานที่ |
+| | Font Awesome, Google Fonts (Prompt) | ไอคอน, ฟอนต์ภาษาไทย |
+| Backend | **Node.js 20+**, **Express 5** | REST API + ส่งไฟล์หน้าเว็บ |
+| | **pg** (node-postgres) | เขียน SQL ติดต่อ PostgreSQL |
+| | **bcryptjs**, **jsonwebtoken** | เข้ารหัสรหัสผ่าน, token เข้าสู่ระบบ |
+| | OAuth 2.0 | เข้าสู่ระบบด้วย Google / LINE |
+| Database | **PostgreSQL 18** + **pgAdmin 4** | เก็บข้อมูลทั้งหมด |
+| เครื่องมือ | Git + GitHub, VS Code, Postman | จัดการโค้ด, ทดสอบ API |
+| Deploy | Render (เซิร์ฟเวอร์), Neon (PostgreSQL) | ขึ้นเว็บจริงแบบฟรี (`render.yaml`) |
+
+## 4. โครงสร้างและการทำงานของระบบ
+
+```
+┌──────────────────────┐   HTTP / JSON (Fetch)   ┌──────────────────────────┐   SQL   ┌──────────────┐
+│  Frontend (เบราว์เซอร์) │ ──────────────────────▶ │  Backend  Node.js+Express │ ──────▶ │  PostgreSQL  │
+│  HTML / CSS / JS     │ ◀────────────────────── │  /api/...  (REST API)     │ ◀────── │  (pgAdmin)   │
+│  Leaflet แผนที่       │                          │  JWT · bcrypt · validation │         └──────────────┘
+└──────────────────────┘                          └────────────┬─────────────┘
+                                                               │ OAuth / ค้นหาสถานที่
+                                                   Google · LINE · OpenStreetMap
 ```
 
-**รีเซ็ตข้อมูล**: ใน pgAdmin คลิกขวาที่ฐานข้อมูล `pawspot` → Delete แล้วรันเซิร์ฟเวอร์ใหม่ ระบบจะสร้างให้ใหม่พร้อมข้อมูลตัวอย่าง
+**ลำดับการทำงานหลัก (ตัวอย่าง: ลงประกาศ)**
+1. ผู้ใช้กรอกฟอร์ม + ปักหมุด → JavaScript ย่อรูปแล้วส่ง `POST /api/items` พร้อม JWT
+2. Backend ตรวจ token และข้อมูล → บันทึกลงตาราง `items` / `images` สถานะ **รออนุมัติ** → แจ้งเตือนผู้ดูแล
+3. ผู้ดูแลกด **อนุมัติ** → ประกาศขึ้นเว็บ → ระบบหาประกาศที่ **ตรงกัน** (ระยะทาง Haversine ใน SQL) → แจ้งเตือนเจ้าของทั้งสองฝั่ง
 
-**ตอนใช้งานจริง**: ตั้ง `JWT_SECRET` เป็นข้อความสุ่มยาวๆ และ `SEED_DEMO=false` เพื่อไม่ให้สร้างบัญชีทดสอบ
-ถ้าใช้ฐานข้อมูลบนคลาวด์ ใส่ `DATABASE_URL=postgres://user:password@host:5432/pawspot` แทนค่า `PG*`
-
-## ขึ้นเว็บจริง (Render + Neon)
-
-ไฟล์ [`render.yaml`](../render.yaml) ที่ root ของ repo ตั้งค่าไว้แล้ว (deploy เฉพาะโฟลเดอร์ `pawspot-project/`)
-
-1. **Neon** (ฐานข้อมูล): สมัครที่ [neon.tech](https://neon.tech) → สร้างโปรเจกต์ region **Singapore** → คัดลอก *connection string* (แบบ pooled)
-2. **Render** (เซิร์ฟเวอร์): สมัครที่ [render.com](https://render.com) ด้วย GitHub → **New → Blueprint** → เลือก repo นี้ แล้วกรอก
-   - `DATABASE_URL` = connection string จาก Neon
-   - `PUBLIC_URL` = URL ของเว็บ เช่น `https://pawspot.onrender.com`
-   - `ADMIN_EMAILS` = อีเมล Google ของเจ้าของเว็บ (ล็อกอินด้วย Google ครั้งแรกจะได้สิทธิ์ผู้ดูแล)
-   - `GOOGLE_CLIENT_ID/SECRET`, `LINE_CHANNEL_ID/SECRET` (ค่าเดียวกับใน `.env`)
-   - `NODE_ENV=production`, `SEED_DEMO=false` และ `JWT_SECRET` (สุ่มให้อัตโนมัติ) ตั้งไว้ใน `render.yaml` แล้ว
-3. เพิ่ม Callback URL ของเว็บจริงใน Google Cloud และ LINE Developers:
-   `https://<ชื่อเว็บ>.onrender.com/api/auth/oauth/google/callback` และ `.../line/callback`
-4. ดูข้อมูลบน Neon ใน pgAdmin: **Register → Server** ใส่ Host / Database / Username / Password จากหน้า Neon และแท็บ Parameters ตั้ง **SSL mode = require**
-
-ข้อจำกัดแบบฟรี: Render หลับเมื่อไม่มีคนใช้ 15 นาที (เข้าครั้งแรกรอ ~30–50 วินาที), Neon เก็บได้ 0.5 GB (รวมรูปภาพ)
-
-## เข้าสู่ระบบด้วย Google / LINE
-
-โค้ดพร้อมแล้ว เหลือแค่สร้างแอปที่ผู้ให้บริการแต่ละเจ้าเพื่อเอา ID / Secret มาใส่ใน `.env` แล้วรีสตาร์ทเซิร์ฟเวอร์
-ปุ่มของเจ้าที่ยังไม่ได้ตั้งค่าจะเป็นสีจาง และกดแล้วจะแจ้งว่ายังไม่เปิดใช้งาน
-
-**Callback URL** ที่ต้องกรอกในแต่ละเจ้า (ถ้าขึ้นเว็บจริง เปลี่ยน `http://localhost:3000` เป็นโดเมนจริง และตั้ง `PUBLIC_URL` ให้ตรงกัน)
-
-| เจ้า | Callback URL |
-|---|---|
-| Google | `http://localhost:3000/api/auth/oauth/google/callback` |
-| LINE | `http://localhost:3000/api/auth/oauth/line/callback` |
-
-### Google
-1. เข้า [Google Cloud Console](https://console.cloud.google.com/) → สร้างโปรเจกต์
-2. **APIs & Services → OAuth consent screen** → เลือก External กรอกชื่อแอปและอีเมล (ระหว่างทดสอบ เพิ่มอีเมลตัวเองใน Test users)
-3. **Credentials → Create credentials → OAuth client ID** → ประเภท *Web application*
-4. ใส่ Callback URL ด้านบนในช่อง **Authorized redirect URIs**
-5. คัดลอกค่าไปใส่ `GOOGLE_CLIENT_ID` และ `GOOGLE_CLIENT_SECRET`
-
-### LINE
-1. เข้า [LINE Developers Console](https://developers.line.biz/console/) → สร้าง Provider → สร้าง channel ประเภท **LINE Login** (เลือก App type: Web app)
-2. แท็บ **LINE Login** ใส่ Callback URL
-3. แท็บ **Basic settings** คัดลอก Channel ID / Channel secret ไปใส่ `LINE_CHANNEL_ID` และ `LINE_CHANNEL_SECRET`
-4. กด **Publish** channel (ถ้ายังเป็น Developing จะใช้ได้เฉพาะ admin/tester ของ channel)
-5. (ไม่บังคับ) ถ้าต้องการอีเมลจาก LINE ให้ขอ *Email address permission* ในแท็บ Basic settings แล้วตั้ง `LINE_SCOPE=profile openid email`
-
-**การทำงาน**: ล็อกอินครั้งแรกจะสร้างบัญชีใหม่ให้อัตโนมัติ ถ้าอีเมลจาก Google (ที่ยืนยันแล้ว) ตรงกับบัญชีเดิม จะผูกเข้ากับบัญชีนั้น
-LINE จะไม่ผูกด้วยอีเมลอัตโนมัติ เพื่อกันคนอื่นสวมรอยบัญชี
-
-## โครงสร้าง
+### โครงสร้างโฟลเดอร์
 
 ```
 pawspot-project/
-├── frontend/                 หน้าเว็บ (เปิดผ่านเซิร์ฟเวอร์ที่ http://localhost:3000)
+├── frontend/                 หน้าเว็บ
 │   ├── index.html
-│   ├── css/style.css
+│   ├── css/style.css         สไตล์ + โหมดมืด
 │   └── js/
-│       ├── script.js         หลัก: รายการประกาศ, รายละเอียด, ลงประกาศ, ล็อกอิน
-│       ├── map.js            แผนที่ (Leaflet)
+│       ├── script.js         หลัก: รายการ, รายละเอียด, ลงประกาศ, ล็อกอิน
+│       ├── map.js            แผนที่ + ค้นหาสถานที่
 │       ├── account.js        โปรไฟล์ + การแจ้งเตือน
-│       └── admin.js          แดชบอร์ดผู้ดูแล
-├── backend/                  เซิร์ฟเวอร์ Express + PostgreSQL
-│   ├── server.js             จุดเริ่มโปรแกรม (npm start / npm run dev)
-│   ├── config.js             อ่านค่าจาก .env
-│   ├── db.js                 เชื่อม PostgreSQL + สร้างฐานข้อมูล/ตารางอัตโนมัติ
+│       ├── admin.js          แดชบอร์ดผู้ดูแล
+│       ├── menu.js           เมนู ☰
+│       ├── pages.js          เกี่ยวกับเรา / นโยบาย / ข้อตกลง / ติดต่อ
+│       └── theme.js          โหมดมืด
+├── backend/                  เซิร์ฟเวอร์
+│   ├── server.js             จุดเริ่มโปรแกรม
+│   ├── config.js · db.js     ตั้งค่า / เชื่อมฐานข้อมูล (สร้างตารางอัตโนมัติ)
 │   ├── schema.sql            โครงสร้างตาราง
 │   ├── seed.js               ข้อมูลตัวอย่าง
 │   ├── validation.js         ตรวจข้อมูลที่ส่งมา
 │   ├── oauth-providers.js    Google / LINE
-│   ├── models/               users, items, images, logins, notifications — คำสั่ง SQL
-│   ├── routes/               auth, oauth, items, images, me, notifications, admin
+│   ├── models/               คำสั่ง SQL แยกตามตาราง
+│   ├── routes/               auth, oauth, items, images, me, notifications, admin, geocode
 │   └── middleware/           JWT auth, request logger
-├── .env                      ค่าลับ (ไม่อยู่ใน git)
-├── .env.example              ตัวอย่างค่าที่ต้องตั้ง
+├── docs/
+│   ├── screenshots/          ภาพหลักฐานการทำงาน
+│   └── test-results.txt      ผลการทดสอบอัตโนมัติ
+├── .env.example              ตัวอย่างค่าที่ต้องตั้ง (.env จริงไม่อยู่ใน git)
 └── package.json
 ```
 
-## API
+## 5. การติดตั้งและใช้งาน
+
+### สิ่งที่ต้องมี
+- [Node.js](https://nodejs.org/) เวอร์ชัน 20 ขึ้นไป
+- [PostgreSQL](https://www.postgresql.org/download/) (ติดตั้งแล้วจะได้ **pgAdmin 4** มาด้วย) — จำรหัสผ่านของผู้ใช้ `postgres` ที่ตั้งตอนติดตั้งไว้
+
+### ขั้นตอน
+
+```bash
+# 1. ดาวน์โหลดโค้ด
+git clone -b pawspot-online https://github.com/67111962-collab/AJ.hathairat.git
+cd AJ.hathairat/pawspot-project
+
+# 2. ติดตั้งแพ็กเกจ
+npm install
+
+# 3. สร้างไฟล์ .env จากตัวอย่าง (Windows: copy .env.example .env)
+cp .env.example .env
+```
+
+4. เปิดไฟล์ `.env` แล้วใส่รหัสผ่าน PostgreSQL
+
+   ```
+   PGPASSWORD=รหัสผ่าน_postgres_ของคุณ
+   ```
+
+5. รันเซิร์ฟเวอร์
+
+   ```bash
+   npm run dev      # โหมดพัฒนา (แก้โค้ดแล้วรีสตาร์ทเอง)
+   # หรือ
+   npm start
+   ```
+
+6. เปิดเบราว์เซอร์ไปที่ **http://localhost:3000**
+
+ตอนเปิดครั้งแรก ระบบจะ **สร้างฐานข้อมูล `pawspot` ตาราง และข้อมูลตัวอย่างให้อัตโนมัติ** (ไม่ต้องรัน SQL เอง)
+
+### บัญชีทดสอบ
+
+| บทบาท | ชื่อผู้ใช้ | รหัสผ่าน |
+|---|---|---|
+| ผู้ดูแล (Admin) | `admin` | `123` |
+| สมาชิก | `user` | `1234` |
+
+> ถ้าพิมพ์รหัสผ่านแล้วเข้าไม่ได้ ตรวจว่าแป้นพิมพ์เป็นภาษาอังกฤษ (เว็บจะเตือนถ้าช่องรหัสผ่านมีตัวอักษรไทย)
+
+## 6. วิธีใช้งานเว็บ
+
+| ต้องการ | ทำอย่างไร |
+|---|---|
+| ดูประกาศ | หน้าแรก → ค้นหา / กรอง → กดการ์ดเพื่อดูรายละเอียด · สลับ **รายการ / แผนที่** ได้ |
+| ลงประกาศ | เข้าสู่ระบบ → **แจ้งเคสใหม่** → กรอกข้อมูล + รูป → **ค้นหาสถานที่** หรือคลิกแผนที่เพื่อปักหมุด → บันทึก (รอผู้ดูแลอนุมัติ) |
+| แจ้งเบาะแส | เปิดประกาศ → กรอกช่อง "แจ้งเบาะแส" ด้านล่าง |
+| น้องกลับบ้านแล้ว | ประกาศของฉัน → **กลับบ้านแล้ว** |
+| อนุมัติประกาศ (Admin) | ☰ → **ประกาศรออนุมัติ** → อนุมัติ / ไม่อนุมัติ (ใส่เหตุผล) |
+| โหมดมืด | ปุ่ม 🌙 มุมขวาบน หรือ ☰ → การแสดงผล |
+
+## 7. ฐานข้อมูล
+
+เปิด pgAdmin 4 → **Servers → PostgreSQL → Databases → pawspot → Schemas → public → Tables**
+
+| ตาราง | เก็บอะไร |
+|---|---|
+| `users` | สมาชิก (รหัสผ่านเป็น bcrypt hash, บทบาท, Google/LINE id) |
+| `items` | ประกาศ (ประเภท, รายละเอียด, พิกัด lat/lng, สถานะ, สถานะการอนุมัติ) |
+| `images` | รูปภาพที่อัปโหลด (bytea) |
+| `sightings` | เบาะแสจากผู้พบเห็น |
+| `notifications` | การแจ้งเตือนของแต่ละคน |
+| `reports` | การแจ้งประกาศไม่เหมาะสม |
+| `login_history` | ประวัติการเข้าสู่ระบบทุกครั้ง (อีเมล, วิธี, สำเร็จหรือไม่, IP, เวลา) |
+| `login_emails` (View) | สรุปอีเมลที่เคยล็อกอินสำเร็จ |
+
+```sql
+-- ตัวอย่าง: ประกาศล่าสุดพร้อมชื่อผู้ลง
+SELECT i.id, i.name, i.type, i.status, i.review_status, u.username
+FROM items i JOIN users u ON u.id = i.reporter_id
+ORDER BY i.created_at DESC;
+```
+
+รีเซ็ตข้อมูล: ใน pgAdmin ลบฐานข้อมูล `pawspot` แล้วรันเซิร์ฟเวอร์ใหม่ ระบบจะสร้างให้ใหม่พร้อมข้อมูลตัวอย่าง
+
+## 8. API
+
+ส่ง token ใน header: `Authorization: Bearer <token>` · ทุก response เป็น JSON
 
 | Method | Path | สิทธิ์ | คำอธิบาย |
 |---|---|---|---|
-| POST | `/api/auth/register` | - | สมัครสมาชิก → `{ token, user }` |
-| POST | `/api/auth/login` | - | เข้าสู่ระบบ → `{ token, user }` |
+| POST | `/api/auth/register` · `/api/auth/login` | - | สมัคร / เข้าสู่ระบบ → `{ token, user }` |
 | GET | `/api/auth/me` | login | ข้อมูลผู้ใช้ปัจจุบัน |
-| GET | `/api/auth/providers` | - | เจ้าที่เปิดใช้ social login แล้ว |
 | GET | `/api/auth/oauth/:provider` | - | เริ่มล็อกอินด้วย `google` / `line` |
-| POST | `/api/auth/oauth/exchange` | - | แลกรหัสใช้ครั้งเดียวหลังล็อกอินเป็น `{ token, user }` |
-| GET | `/api/items` | - | รายการประกาศ (`type`, `category`, `status`, `q`, `sort`, `mine=1`, `page`, `limit`) |
-| GET | `/api/items/stats` | - | สถิติ |
-| GET | `/api/items/:id` | - | รายละเอียด + เบาะแส |
-| POST | `/api/items` | login | ลงประกาศ (`image` เป็น data URL ได้) |
-| PUT | `/api/items/:id` | เจ้าของ/admin | แก้ไข |
-| PATCH | `/api/items/:id/status` | เจ้าของ/admin | `{ status: "pending" \| "returned" }` |
-| DELETE | `/api/items/:id` | เจ้าของ/admin | ลบ |
-| POST | `/api/items/:id/sightings` | login | แจ้งเบาะแส |
-| DELETE | `/api/items/:id/sightings/:sid` | ผู้แจ้ง/เจ้าของ/admin | ลบเบาะแส |
-| GET | `/api/images/:id` | - | ไฟล์รูป |
-| GET | `/api/items/map` | - | หมุดบนแผนที่ (ใช้ตัวกรองเดียวกับรายการ) |
-| GET | `/api/items/:id/matches` | - | ประกาศที่อาจเป็นสัตว์ตัวเดียวกัน |
-| POST | `/api/items/:id/report` | login | แจ้งประกาศไม่เหมาะสม `{ reason }` |
-| GET / PATCH | `/api/me` | login | ดู / แก้โปรไฟล์ `{ name, email, avatar }` |
-| POST | `/api/me/password` | login | เปลี่ยน/ตั้งรหัสผ่าน |
-| GET | `/api/me/sightings` | login | เบาะแสที่ฉันส่ง |
-| GET | `/api/notifications` | login | การแจ้งเตือน + จำนวนที่ยังไม่อ่าน |
-| POST | `/api/notifications/read` | login | ทำเครื่องหมายว่าอ่านแล้ว `{ ids? }` |
-| GET | `/api/admin/stats` | admin | ตัวเลขภาพรวม + ข้อมูลรายวัน 30 วัน |
-| GET | `/api/admin/users` · `/items` · `/reports` · `/logins` | admin | รายการสำหรับจัดการ |
-| PATCH | `/api/admin/users/:id` | admin | `{ role, banned }` |
-| PATCH | `/api/admin/items/:id/hidden` | admin | ซ่อน/เลิกซ่อนประกาศ `{ hidden, reason }` |
-| POST | `/api/admin/reports/:id/resolve` | admin | ปิดรายงาน |
+| GET | `/api/items` | - | รายการประกาศ (`type`, `category`, `status`, `q`, `sort`, `mine`, `page`, `limit`) |
+| GET | `/api/items/map` · `/api/items/stats` | - | หมุดบนแผนที่ / สถิติ |
+| GET | `/api/items/:id` · `/api/items/:id/matches` | - | รายละเอียด + เบาะแส / ประกาศที่อาจตรงกัน |
+| POST | `/api/items` | login | ลงประกาศ (รออนุมัติ) |
+| PUT · DELETE | `/api/items/:id` | เจ้าของ/admin | แก้ไข / ลบ |
+| PATCH | `/api/items/:id/status` | เจ้าของ/admin | `pending` / `returned` |
+| POST | `/api/items/:id/sightings` · `/report` | login | แจ้งเบาะแส / แจ้งประกาศไม่เหมาะสม |
+| GET · PATCH | `/api/me` · POST `/api/me/password` | login | โปรไฟล์ / รหัสผ่าน |
+| GET · POST | `/api/notifications` · `/read` | login | การแจ้งเตือน |
+| GET | `/api/geocode?q=` | login | ค้นหาสถานที่ (OpenStreetMap) |
+| GET | `/api/admin/stats` · `/users` · `/items` · `/reports` · `/logins` | admin | ข้อมูลแดชบอร์ด |
+| PATCH | `/api/admin/items/:id/review` | admin | `{ decision: "approve" \| "reject", reason }` |
+| PATCH | `/api/admin/items/:id/hidden` · `/api/admin/users/:id` | admin | ซ่อนประกาศ / ตั้งสิทธิ์-ระงับผู้ใช้ |
 
-ส่ง token ใน header: `Authorization: Bearer <token>`
+## 9. การทดสอบ
+
+ทดสอบอัตโนมัติ **6 ชุด รวม 178 ข้อ ผ่านทั้งหมด** (รันบนฐานข้อมูลทดสอบแยก) — ผลอยู่ใน [docs/test-results.txt](docs/test-results.txt)
+
+| ชุด | ทดสอบอะไร |
+|---|---|
+| API | สมัคร/ล็อกอิน, สิทธิ์เจ้าของ/admin, ลงประกาศ, รูปภาพ, ค้นหา, แบ่งหน้า, กัน SQL wildcard |
+| Login history | บันทึกทุกการเข้าสู่ระบบ สำเร็จ/ล้มเหลว, IP |
+| Features | แผนที่, จับคู่อัตโนมัติ, แจ้งเตือน, โปรไฟล์, รายงาน, แดชบอร์ด, ระงับผู้ใช้ |
+| Approval | ประกาศรออนุมัติ, อนุมัติ/ไม่อนุมัติ, แก้ไขแล้วต้องอนุมัติใหม่ |
+| OAuth | Google / LINE (จำลองผู้ให้บริการ), กันสวมรอยบัญชี |
+| Production | ต้องตั้ง JWT_SECRET, security headers, อ่าน IP ผ่าน proxy |
+
+## 10. ภาพตัวอย่างการทำงาน
+
+| | |
+|---|---|
+| ![หน้าแรก](docs/screenshots/01-home.jpg) หน้าแรก + สถิติ | ![รายการประกาศ](docs/screenshots/02-listings.jpg) รายการประกาศ |
+| ![แผนที่](docs/screenshots/03-map-view.jpg) ดูประกาศบนแผนที่ | ![รายละเอียด](docs/screenshots/04-post-detail.jpg) รายละเอียด + แผนที่ |
+| ![เบาะแส](docs/screenshots/05-post-detail-tips.jpg) เบาะแสจากผู้พบเห็น | ![เข้าสู่ระบบ](docs/screenshots/06-login.jpg) เข้าสู่ระบบ (รหัสผ่าน / Google / LINE) |
+| ![เมนู](docs/screenshots/07-side-menu.jpg) เมนู ☰ | ![ค้นหาสถานที่](docs/screenshots/08-place-search.jpg) ค้นหาสถานที่ |
+| ![ปักหมุด](docs/screenshots/09-pin-on-map.jpg) ปักหมุดอัตโนมัติ | ![รออนุมัติ](docs/screenshots/10-post-submitted-pending.jpg) ส่งประกาศ → รออนุมัติ |
+| ![แดชบอร์ด](docs/screenshots/11-admin-overview.jpg) แดชบอร์ดผู้ดูแล | ![อนุมัติ](docs/screenshots/12-admin-pending-approval.jpg) อนุมัติประกาศ |
+| ![แจ้งเตือน](docs/screenshots/13-notifications.jpg) การแจ้งเตือน | ![โปรไฟล์](docs/screenshots/14-profile.jpg) โปรไฟล์ |
+| ![ประวัติล็อกอิน](docs/screenshots/15-login-history.jpg) ประวัติการเข้าสู่ระบบ | ![โหมดมืด](docs/screenshots/16-dark-mode-home.jpg) โหมดมืด |
+| ![โหมดมืด รายการ](docs/screenshots/17-dark-mode-listings.jpg) โหมดมืด (รายการ) | ![มือถือ](docs/screenshots/18-mobile-home.jpg) บนมือถือ |
+
+## 11. เข้าสู่ระบบด้วย Google / LINE (ไม่บังคับ)
+
+เว็บใช้งานได้ครบโดยไม่ต้องตั้งค่าส่วนนี้ (ปุ่ม Google/LINE จะเป็นสีจาง) ถ้าต้องการเปิดใช้ ให้สร้างแอปที่ผู้ให้บริการแล้วใส่ค่าใน `.env`
+
+| เจ้า | Callback URL (เครื่องตัวเอง) | ค่าใน `.env` |
+|---|---|---|
+| Google ([Cloud Console](https://console.cloud.google.com/)) | `http://localhost:3000/api/auth/oauth/google/callback` | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` |
+| LINE ([LINE Developers](https://developers.line.biz/console/)) | `http://localhost:3000/api/auth/oauth/line/callback` | `LINE_CHANNEL_ID`, `LINE_CHANNEL_SECRET` |
+
+- Google: OAuth consent screen (External + Test users) → Credentials → OAuth client ID แบบ *Web application*
+- LINE: สร้าง Provider → channel แบบ **LINE Login** (Web app) → ใส่ Callback URL → Publish
+- `ADMIN_EMAILS=อีเมล@...` : ล็อกอินด้วย Google (อีเมลที่ยืนยันแล้ว) ครั้งแรกจะได้สิทธิ์ผู้ดูแลอัตโนมัติ
+
+## 12. ขึ้นเว็บจริง (Render + Neon)
+
+ไฟล์ [`render.yaml`](../render.yaml) ที่ root ของ repo ตั้งค่าไว้แล้ว
+
+1. **Neon**: สร้างโปรเจกต์ region Singapore → คัดลอก connection string (pooled)
+2. **Render**: New → **Blueprint** → เลือก repo + branch `pawspot-online` → กรอก `DATABASE_URL`, `PUBLIC_URL`, `ADMIN_EMAILS`, คีย์ Google/LINE
+3. เพิ่ม Callback URL ของเว็บจริงใน Google / LINE: `https://<ชื่อเว็บ>.onrender.com/api/auth/oauth/google/callback` (และ `/line/callback`)
+
+แบบฟรี: Render หลับเมื่อไม่มีคนใช้ 15 นาที (เข้าครั้งแรกรอ ~30–50 วินาที), Neon เก็บได้ 0.5 GB
+
+## 13. สรุปผลและแนวทางปรับปรุง
+
+**สรุปผล**
+- ได้เว็บแอปที่ใช้งานได้จริงครบวงจร: ลงประกาศ ค้นหา แผนที่ จับคู่อัตโนมัติ เบาะแส แจ้งเตือน ระบบสมาชิก และระบบผู้ดูแล
+- แยก Frontend / Backend ชัดเจน ติดต่อกันผ่าน REST API · ข้อมูลเก็บใน PostgreSQL ดูได้ใน pgAdmin
+- มีการทดสอบอัตโนมัติ 178 ข้อ และคำนึงถึงความปลอดภัย (bcrypt, JWT, กัน XSS/SQL Injection, อนุมัติประกาศ)
+
+**แนวทางปรับปรุง**
+- ยืนยันอีเมลตอนสมัคร และรีเซ็ตรหัสผ่านทางอีเมล
+- แชทในเว็บระหว่างผู้พบกับเจ้าของ (ไม่ต้องเปิดเผยเบอร์โทร)
+- หลายรูปต่อประกาศ, เก็บรูปบน Cloud Storage แทนฐานข้อมูล
+- ติดตั้งเป็นแอปบนมือถือ (PWA) + แจ้งเตือนแบบ push
+- ลบบัญชีได้เอง (ตาม PDPA), เตือนประกาศที่ค้างนาน
