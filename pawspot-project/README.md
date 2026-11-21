@@ -203,6 +203,7 @@ ORDER BY i.created_at DESC;
 ## 8. API
 
 ส่ง token ใน header: `Authorization: Bearer <token>` · ทุก response เป็น JSON
+คำอธิบายการทำงานของ API ทีละบรรทัด และความสัมพันธ์ของตาราง: [docs/api-guide.md](docs/api-guide.md) · SQL สำหรับสาธิตใน pgAdmin: [docs/demo-queries.sql](docs/demo-queries.sql)
 
 | Method | Path | สิทธิ์ | คำอธิบาย |
 |---|---|---|---|
